@@ -27,14 +27,17 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	//make the context. 
 	makecontext(&context, (void*)function, 1, arg);
 	
-	//set the running context.
+	//set the running context
+	//@DEBUG: This code shouldn't be here since the scheduler will decide when to start a thread. 
 	setcontext(&context);
 	printf("done.\n");
-	return 0;
+	return context; 
 };
 
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield() {
+	
+	//Fire some sort of signal. 
 	return 0;
 };
 
