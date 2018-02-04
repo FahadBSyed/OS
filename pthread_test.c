@@ -5,10 +5,11 @@
 #include <stdlib.h>
 #include "my_pthread_t.h"
 
-void* test_func(void* arg){
+void* test_func(void* x){
 	
-	int a = *((int *)arg);
-	printf("a is %d\n", a);
+	printf("we called test_func\n");
+	int c = *(int*)x;
+	printf("C is %d\n", c);
 }
 
 int main(int argc, char** argv){
@@ -17,7 +18,7 @@ int main(int argc, char** argv){
 	
 	my_pthread_t thread = 0;
 	int x = 10;
-	my_pthread_create(&thread, NULL, test_func, &x);
+	my_pthread_create(&thread, NULL, (void*)&test_func, &x);
 	
 }
 

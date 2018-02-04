@@ -11,6 +11,24 @@
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
 	printf("making pthread...\n");
+	
+	//create a context. 
+	ucontext_t context;
+	
+	//get a context. 
+	getcontext(&context);
+	
+	//initialize context members. 
+	context.uc_link=0;
+	context.uc_stack.ss_sp=malloc(4096);
+	context.uc_stack.ss_size=4096;
+	context.uc_stack.ss_flags=0;
+	
+	//make the context. 
+	makecontext(&context, (void*)function, 1, arg);
+	
+	//set the running context.
+	setcontext(&context);
 	printf("done.\n");
 	return 0;
 };
