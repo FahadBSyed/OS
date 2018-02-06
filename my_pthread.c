@@ -22,8 +22,11 @@
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
 	printf("creating pthread...\n");
 	
+	tcb* block = malloc(sizeof(tcb));
 	//create a context. 
-	ucontext_t context = *(ucontext_t*)thread;
+	ucontext_t context;
+	block->context_ptr = &context; 
+	*thread = block; 
 	
 	//get a context. 
 	getcontext(&context);
@@ -53,13 +56,17 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield() {
 	
-	//Fire some sort of signal. 
+	//Fire some sort of signal.
+	
 	return 0;
 };
 
 /* terminate a thread */
 void my_pthread_exit(void *value_ptr) {
 	
+	
+	//TODO: get current active tcb. 
+	raise(1);
 	
 	//termination flag = true; 
 	/*
@@ -81,8 +88,7 @@ void my_pthread_exit(void *value_ptr) {
 int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	
 	
-	//TODO: figure out how to get context from thread reference.
-	//TODO: figure out how to get termination flag status from context. 
+	//TODO: get the context from the global tcb struct
 	/*
 	Check if calling thread has terminated.
 	

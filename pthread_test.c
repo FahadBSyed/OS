@@ -11,23 +11,23 @@ void* test_func(void* x){
 	int c = *(int*)x;
 	printf("C is %d\n", c);
 	c *=2;
-	my_pthread_exit(&c);
+	pthread_exit(&c);
 }
 
 int main(int argc, char** argv){
 	
 	printf("hello world.\n");
 	
-	my_pthread_t thread = 0;
+	pthread_t thread;
 	int x = 10;
-	int error = my_pthread_create(&thread, NULL, (void*)&test_func, &x);
+	int error = pthread_create(&thread, NULL, (void*)&test_func, &x);
 	if (error != 0)
 		printf("can't create thread :[%s]", strerror(error));
 	else
 		printf("Thread created successfully\n");
 
 	int* ret; 
-	my_pthread_join(thread, (void**)&ret);
+	pthread_join(thread, (void**)&ret);
 	printf("return value from the thread is %d\n", *ret);
 	
 }
