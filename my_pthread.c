@@ -15,41 +15,96 @@
 		We need a way to pass context information from this library to the scheduler.
 		The scheduler should have a linked list or priority heap of contexts. 
 		
+		Dr. Francisco was saying that we should have the scheduler live within this library and every
+		thread function call should call the scheduler and get it to do what it needs. 
+		Signal handler is basically just a call to yield. 
 		
+		In scheduler, we have to implement mutexes, mutexes are ways to protect memory. Scheduler can
+		also protect memory. We should use the scheduler to check if a mutex is currently in used and
+		the scheduler should not schedule them to run until someone calls unlock() on the mutex
+		
+		When we lock or unlock a mutex, we modify the state of who gets to run, when. If we lock, this
+		context cannot be computed unless the scheduler says its okay.
+		
+		When we create, join, or exit, we change scheduling state.
+		Yield does not change scheduling state - it relinquishes remaining runtime
+		Yield is a direct call to the scheduler
+		Yield is essentially the scheduler.
+		
+		Join - update state, then yield
+		Exit - update state, then yield
+		Create - add a context to the system, figure out who runs next, then yield
+		Yield - the scheduler 
+		
+		signal handler .. yield!
 */
+
+
+//Need a queue of running threads
+
+//Need a queue of waiting threads 
 
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
-	printf("creating pthread...\n");
+	printf("\ncreating pthread.\n");
 	
 	tcb* block = malloc(sizeof(tcb));
-	//create a context. 
-	ucontext_t context;
-	block->context_ptr = &context; 
+	block->context_ptr = malloc(sizeof(ucontext_t));
+	//create a context.	
 	*thread = block; 
 	
 	//get a context. 
-	getcontext(&context);
+	getcontext(block->context_ptr);
 	
 	//@DEBUG: Do error handing on getcontext().
 	
 	//initialize context members. 
-	context.uc_link=0;
+	block->context_ptr->uc_link=0;
 	//TODO: figure out the proper protocol to set this pointer. 
 	
-	context.uc_stack.ss_sp=malloc(4096);
-	context.uc_stack.ss_size=4096;
-	context.uc_stack.ss_flags=0;
+	block->context_ptr->uc_stack.ss_sp=malloc(4096);
+	block->context_ptr->uc_stack.ss_size=4096;
+	block->context_ptr->uc_stack.ss_flags=0;
 	
 	//make the context. 
-	makecontext(&context, (void*)function, 1, arg);
+	makecontext(block->context_ptr, (void*)function, 1, arg);
 	
 	//@DEBUG: Do error handing on makecontext().
 	
 	//set the running context
 	//@DEBUG: This code shouldn't be here since the scheduler will decide when to start a thread. 
-	setcontext(&context);
-	printf("done.\n");
+	
+	if(currently_running_thread == NULL){
+		
+		currently_running_thread = block;
+		setcontext(block->context_ptr);
+
+	}
+	else{
+		
+		if(running_queue == NULL){
+			
+			//allocate our first tcb_node, fill the tcb, and set next to null.
+			running_queue = malloc(sizeof(tcb_node));
+			running_queue->tcb = block;
+			running_queue->next = NULL;
+		}
+		else{
+			
+			//traverse tcb_node queue until node's next is null.
+			tcb_node* running_ptr = running_queue;
+			while(running_ptr->next != NULL){
+				running_ptr = running_ptr->next;
+			}
+			
+			//create a next node and assign it to the end of the queue.
+			running_ptr->next = malloc(sizeof(tcb_node));
+			running_ptr->next->tcb = block;
+			running_ptr->next->next = NULL;
+			running_queue->next = running_ptr->next;
+		}
+	}
+	
 	return 0; 
 };
 
@@ -65,8 +120,24 @@ int my_pthread_yield() {
 void my_pthread_exit(void *value_ptr) {
 	
 	
-	//TODO: get current active tcb. 
-	raise(1);
+	//@DEBUG: We don't want to do this once we start implementing join. Or do we? 
+	//move the currently_running_thread to block and free block. 
+	tcb* block = currently_running_thread;
+	printf("\nfreeing block.\n");
+	free(block);
+	
+	//yielding stuff
+	printf("Checking if running queue is null.\n");
+	if(running_queue != NULL){
+		
+		//set currently running thread to top of running queue and remove first entry from running queue. 
+		currently_running_thread = running_queue->tcb;
+		
+		tcb_node* running_ptr = running_queue;
+		running_queue = running_queue->next;
+		running_ptr->next = NULL;
+		setcontext(currently_running_thread->context_ptr); //segfaulting line
+	}
 	
 	//termination flag = true; 
 	/*

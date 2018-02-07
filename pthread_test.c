@@ -5,12 +5,23 @@
 #include <stdlib.h>
 #include "my_pthread_t.h"
 
+void* test_func2(){
+	
+	printf("\nwe called test_func 2\n");
+	int c = 0;
+	pthread_exit(&c);
+}
+
 void* test_func(void* x){
 	
-	printf("we called test_func\n");
+	printf("\nwe called test_func\n");
 	int c = *(int*)x;
 	printf("C is %d\n", c);
 	c *=2;
+	
+	pthread_t thread2;
+	printf("creating thread 2\n");
+	pthread_create(&thread2, NULL, (void*)&test_func2, NULL);
 	pthread_exit(&c);
 }
 
