@@ -37,6 +37,8 @@
 		Yield - the scheduler 
 		
 		signal handler .. yield!
+		
+		TODO: figure out how to return to main if we don't have context for it. 
 */
 
 
@@ -127,8 +129,8 @@ void my_pthread_exit(void *value_ptr) {
 	free(block);
 	
 	//yielding stuff
-	printf("Checking if running queue is null.\n");
 	if(running_queue != NULL){
+		printf("Running queue is not empty.\n");
 		
 		//set currently running thread to top of running queue and remove first entry from running queue. 
 		currently_running_thread = running_queue->tcb;
@@ -137,6 +139,9 @@ void my_pthread_exit(void *value_ptr) {
 		running_queue = running_queue->next;
 		running_ptr->next = NULL;
 		setcontext(currently_running_thread->context_ptr); //segfaulting line
+	}
+	else{
+		printf("Running queue is empty.\n");
 	}
 	
 	//termination flag = true; 
@@ -153,6 +158,7 @@ void my_pthread_exit(void *value_ptr) {
 	thus, process-shared resources are released 
 	
 	*/
+	return 0;
 };
 
 /* wait for thread termination */
@@ -195,9 +201,10 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	The pthread_join() or pthread_detach() function should eventually be called for every thread that is created with 
 	the detachstate attribute set to PTHREAD_CREATE_JOINABLE so that storage associated with the thread may be reclaimed.
 	
+	
 	*/
 	
-	return 0;
+	return;
 };
 
 /* initial the mutex lock */
