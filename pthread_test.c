@@ -5,10 +5,19 @@
 #include <stdlib.h>
 #include "my_pthread_t.h"
 
+void* test_func3(){
+	
+	printf("\nwe called test_func3.\n");
+	pthread_exit(NULL);
+}
+
 void* test_func2(){
 	
 	printf("\nwe called test_func 2\n");
 	int c = 0;
+	pthread_t thread3;
+	pthread_create(&thread3, NULL, (void*)&test_func3, NULL);
+	pthread_join(thread3, NULL);
 	pthread_exit(&c);
 }
 
@@ -21,8 +30,8 @@ void* test_func(void* x){
 	
 	pthread_t thread2;
 	printf("creating thread 2\n");
-	//pthread_create(&thread2, NULL, (void*)&test_func2, NULL);
-	//pthread_join(thread2, NULL);
+	pthread_create(&thread2, NULL, (void*)&test_func2, NULL);
+	pthread_join(thread2, NULL);
 	pthread_exit(&c);
 }
 

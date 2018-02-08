@@ -110,9 +110,9 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 		//allocate our main context.
 		tcb* main_block = malloc(sizeof(tcb));
 		main_block->context_ptr = malloc(sizeof(ucontext_t));
-		getcontext(main_block->context_ptr);
 		currently_running_thread = main_block;
 		printf("\nMAIN:\trunning main thread (tcb*) %x.\n", main_block);
+		getcontext(main_block->context_ptr);
 	}
 	return 0; 
 };
@@ -160,12 +160,14 @@ void my_pthread_exit(void *value_ptr) {
 			if(prev_ptr != NULL){
 				prev_ptr->next = waiting_ptr->next;
 			}
+			if(waiting_ptr->tcb == joiner){
+				printf("\tfound the joiner.\n");
+			}
 			waiting_ptr->next = NULL;
 			currently_running_thread = waiting_ptr->tcb;
 			printf("\trunning thread (tcb*) %x from waiting queue.\n", currently_running_thread);
 			setcontext(currently_running_thread->context_ptr);
 			return;
-			
 			
 		}
 		else{
@@ -219,17 +221,19 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	}
 	else{
 		
-		printf("\tadding thread (tcb *) %x to waiting queue.\n", currently_running_thread);
 		//traverse tcb_node queue until node's next is null.
 		tcb_node* waiting_ptr = waiting_queue;
 		while(waiting_ptr->next != NULL){
 			waiting_ptr = waiting_ptr->next;
+			printf("\tthread in list: (tcb *) %x.\n", waiting_ptr->tcb);
 		}
 		
+		printf("\tappending thread (tcb *) %x to waiting queue.\n", currently_running_thread);
 		//create a next node and assign it to the end of the queue.
 		waiting_ptr->next = malloc(sizeof(tcb_node));
 		waiting_ptr->next->tcb = currently_running_thread;
 		waiting_ptr->next->next = NULL;
+		getcontext(waiting_ptr->next->tcb->context_ptr);
 	}
 	
 	if(running_queue != NULL){		
@@ -240,9 +244,6 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 		running_ptr->next = NULL;
 		printf("\trunning thread (tcb *) %x.\n", currently_running_thread);
 		setcontext(currently_running_thread->context_ptr); 
-	}
-	else{
-		printf("ERROR: running queue is empty. Running queue should never be empty for create to work. \n");
 	}
 	
 	/*
