@@ -50,6 +50,20 @@
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
 	printf("\ncreating pthread.\n");
 	
+	//create the main context.
+	if(running_queue == NULL){
+		
+		//allocate our main context before all threads are created
+		tcb* main_block = malloc(sizeof(tcb));
+		main_block->context_ptr = malloc(sizeof(ucontext_t));
+		getcontext(main_block->context_ptr);
+		
+		running_queue = malloc(sizeof(tcb_node));
+		running_queue->tcb = main_block;	
+		currently_running_thread = main_block;
+
+	}
+	
 	tcb* block = malloc(sizeof(tcb));
 	block->context_ptr = malloc(sizeof(ucontext_t));
 	//create a context.	
@@ -80,31 +94,20 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 		
 		currently_running_thread = block;
 		setcontext(block->context_ptr);
-
 	}
 	else{
 		
-		if(running_queue == NULL){
-			
-			//allocate our first tcb_node, fill the tcb, and set next to null.
-			running_queue = malloc(sizeof(tcb_node));
-			running_queue->tcb = block;
-			running_queue->next = NULL;
+		//traverse tcb_node queue until node's next is null.
+		tcb_node* running_ptr = running_queue;
+		while(running_ptr->next != NULL){
+			running_ptr = running_ptr->next;
 		}
-		else{
-			
-			//traverse tcb_node queue until node's next is null.
-			tcb_node* running_ptr = running_queue;
-			while(running_ptr->next != NULL){
-				running_ptr = running_ptr->next;
-			}
-			
-			//create a next node and assign it to the end of the queue.
-			running_ptr->next = malloc(sizeof(tcb_node));
-			running_ptr->next->tcb = block;
-			running_ptr->next->next = NULL;
-			running_queue->next = running_ptr->next;
-		}
+		
+		//create a next node and assign it to the end of the queue.
+		running_ptr->next = malloc(sizeof(tcb_node));
+		running_ptr->next->tcb = block;
+		running_ptr->next->next = NULL;
+		running_queue->next = running_ptr->next;
 	}
 	
 	return 0; 
@@ -125,6 +128,11 @@ void my_pthread_exit(void *value_ptr) {
 	//@DEBUG: We don't want to do this once we start implementing join. Or do we? 
 	//move the currently_running_thread to block and free block. 
 	tcb* block = currently_running_thread;
+	if(currently_running_thread->joining_thread_ptr){
+		
+		tcb* joiner = currently_running_thread->joining_thread_ptr;
+		joiner->value_ptr = value_ptr;
+	}
 	printf("\nfreeing block.\n");
 	free(block);
 	
@@ -158,15 +166,47 @@ void my_pthread_exit(void *value_ptr) {
 	thus, process-shared resources are released 
 	
 	*/
-	return 0;
+	return;
 };
 
 /* wait for thread termination */
 int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	
 	
-	//TODO: get the context from the global tcb struct
-	/*
+	thread->joining_thread_ptr = currently_running_thread;
+	if(waiting_queue == NULL){
+		
+		waiting_queue = malloc(sizeof(tcb_node));
+		waiting_queue->tcb = currently_running_thread;
+		waiting_queue->next = NULL;
+	}
+	else{
+		//traverse tcb_node queue until node's next is null.
+		tcb_node* waiting_ptr = waiting_queue;
+		while(waiting_ptr->next != NULL){
+			waiting_ptr = waiting_ptr->next;
+		}
+		
+		//create a next node and assign it to the end of the queue.
+		waiting_ptr->next = malloc(sizeof(tcb_node));
+		waiting_ptr->next->tcb = currently_running_thread;
+		waiting_ptr->next->next = NULL;
+		waiting_queue->next = waiting_ptr->next;
+	}
+	
+	if(running_queue != NULL){		
+		//set currently running thread to top of running queue and remove first entry from running queue. 
+		currently_running_thread = running_queue->tcb;
+		
+		tcb_node* running_ptr = running_queue;
+		running_queue = running_queue->next;
+		running_ptr->next = NULL;
+		setcontext(currently_running_thread->context_ptr); //segfaulting line
+	}
+	else{
+		printf("Running queue is empty.\n");
+	}
+		/*
 	Check if calling thread has terminated.
 	
 	if target thread's termination flag == true:
