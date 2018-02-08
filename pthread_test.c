@@ -21,7 +21,8 @@ void* test_func(void* x){
 	
 	pthread_t thread2;
 	printf("creating thread 2\n");
-	pthread_create(&thread2, NULL, (void*)&test_func2, NULL);
+	//pthread_create(&thread2, NULL, (void*)&test_func2, NULL);
+	//pthread_join(thread2, NULL);
 	pthread_exit(&c);
 }
 
@@ -32,14 +33,14 @@ int main(int argc, char** argv){
 	pthread_t thread;
 	int x = 10;
 	int error = pthread_create(&thread, NULL, (void*)&test_func, &x);
-	if (error != 0)
+	if (error != 0){
 		printf("can't create thread :[%s]", strerror(error));
-	else
-		printf("Thread created successfully\n");
+		return;
+	}
 
 	int* ret; 
 	pthread_join(thread, (void**)&ret);
-	printf("return value from the thread is %d\n", *ret);
-	
+	printf("\treturn value from the thread is %d\n", ret);
+	pthread_exit(NULL);
 }
 
