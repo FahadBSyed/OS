@@ -87,16 +87,20 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	if(running_queue == NULL && waiting_queue == NULL && currently_running_thread == NULL){
 		
 		make_main = 1;
-		memset(&sa, 0, sizeof(sa));
-		sa.sa_handler =&my_pthread_yield;
-		sigaction(SIGPROF, &sa, NULL);
 		
-		timer.it_value.tv_sec = 0;
-		timer.it_value.tv_usec = 250000;
-		timer.it_interval.tv_sec = 0;
-		timer.it_interval.tv_usec = 250000;
-		setitimer (ITIMER_VIRTUAL, &timer, NULL);
+		printf("\tMaking timer.\n");
+		sa = malloc(sizeof(struct sigaction));
+		timer = malloc(sizeof(struct itimerval));
+		memset(sa, 0, sizeof(*sa));
+		sa->sa_handler = &my_pthread_yield;
+		sigaction(SIGALRM, sa, NULL);
+		timer->it_value.tv_sec = 0;
+		timer->it_value.tv_usec = 2500;
+		timer->it_interval.tv_sec = 0;
+		timer->it_interval.tv_usec = 2500;
+		setitimer (ITIMER_REAL, timer, NULL);	
 	}
+	
 	
 	//Creates a new context pointed to by block.	
 	tcb* block = malloc(sizeof(tcb));
@@ -133,15 +137,29 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield() {
 	
-	printf("\t\ttime's up!\n");
+	printf("\x1b[32m\ttime's up\x1b[0m\n");
 	//Fire some sort of signal.
 	
+	//swap currently running context with the first context in the queue. 
+	
+	tcb* block = currently_running_thread;
+	if(running_queue != NULL){
+		currently_running_thread = dequeue(&running_queue);
+		enqueue(&running_queue, block);
+		printf("\trunning thread (tcb*) %x from running queue.\n", currently_running_thread);
+		swapcontext(block->context_ptr, currently_running_thread->context_ptr);
+		return;
+	}
+	else{
+		printf("\tRunning queue is empty.\n");
+	}
 	//figure out how to refactor exit(), create(), and join() scheduling stuff into this.
 	
 	return 0;
 };
 
 /* terminate a thread */
+//TODO: figure out how to store return value correctly.
 void my_pthread_exit(void *value_ptr) {
 	
 	printf("\nEXIT:");
@@ -221,6 +239,7 @@ void my_pthread_exit(void *value_ptr) {
 };
 
 /* wait for thread termination */
+//TODO: figure out how to retrieve return value correctly.
 int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	printf("\nJOIN:");
 	thread->joining_thread_ptr = currently_running_thread;
