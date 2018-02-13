@@ -280,21 +280,48 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 
 /* initial the mutex lock */
 int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) {
+	if(mutex == NULL){
+		return EINVAL;
+	}
+
+	mutext->flag = 0;	
 	return 0;
 };
 
 /* aquire the mutex lock */
 int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
+	if(mutex == NULL) {
+		return EINVAL;
+	}
+
+	if(mutex->flag == 0) {
+		mutex->flag = 1;
+	}	
+
+	while(__atomic_test_and_set(&(mutex->flag), 1) == 1){
+		
+	}
+
 	return 0;
 };
 
 /* release the mutex lock */
 int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
+	
 	return 0;
 };
 
 /* destroy the mutex */
 int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
+	if(mutex == NULL){
+		return EINVAL;
+	}
+
+	if(mutex->flag == 0){
+		free(mutex);
+	}
+
+	return 0;
 	return 0;
 };
 
