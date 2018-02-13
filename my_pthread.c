@@ -41,6 +41,36 @@
 		TODO: figure out how to return to main if we don't have context for it. 
 */
 
+void start_timer(){
+	
+	if(timer == NULL){
+		printf("ERROR: timer was uninitialized.\n");
+		return;
+	}
+	
+	timer->it_value.tv_sec = 0;
+	timer->it_value.tv_usec = 2500;
+	timer->it_interval.tv_sec = 0;
+	timer->it_interval.tv_usec = 2500;
+	setitimer (ITIMER_REAL, timer, NULL);
+	return;
+}
+
+void pause_timer(){
+	
+	if(timer == NULL){
+		printf("ERROR: timer was uninitialized.\n");
+		return;
+	}
+	timer->it_value.tv_sec = 0;
+	timer->it_value.tv_usec = 0;
+	timer->it_interval.tv_sec = 0;
+	timer->it_interval.tv_usec = 0;
+	setitimer (ITIMER_REAL, timer, NULL);
+	return;
+}
+
+
 //This function takes the address of one of our queues. It then removes the first node in the queue.
 //TODO: possibly clean up and free taken node.
 tcb* dequeue(tcb_node** queue){
@@ -79,6 +109,9 @@ void enqueue(tcb_node** queue, tcb* block){
 
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
+	if(timer != NULL){
+		pause_timer();
+	}
 	printf("\nCREATE:");
 	
 	//create the main context if all of our data structures are unallocated. 
@@ -90,17 +123,12 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 		
 		printf("\tMaking timer.\n");
 		sa = malloc(sizeof(struct sigaction));
-		timer = malloc(sizeof(struct itimerval));
+		timer = malloc(sizeof(struct itimerval)); 
 		memset(sa, 0, sizeof(*sa));
+		memset(timer, 0, sizeof(*timer));
 		sa->sa_handler = &my_pthread_yield;
 		sigaction(SIGALRM, sa, NULL);
-		timer->it_value.tv_sec = 0;
-		timer->it_value.tv_usec = 2500;
-		timer->it_interval.tv_sec = 0;
-		timer->it_interval.tv_usec = 2500;
-		setitimer (ITIMER_REAL, timer, NULL);	
 	}
-	
 	
 	//Creates a new context pointed to by block.	
 	tcb* block = malloc(sizeof(tcb));
@@ -131,11 +159,16 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 		printf("\nMAIN:\trunning main thread (tcb*) %x.\n", main_block);
 		getcontext(main_block->context_ptr);
 	}
+	start_timer();
 	return 0; 
 };
 
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield() {
+	
+	if(timer != NULL){	
+		pause_timer();
+	}
 	
 	printf("\x1b[32m\ttime's up\x1b[0m\n");
 	//Fire some sort of signal.
@@ -155,12 +188,19 @@ int my_pthread_yield() {
 	}
 	//figure out how to refactor exit(), create(), and join() scheduling stuff into this.
 	
+	if(timer != NULL){
+		start_timer();
+	}
 	return 0;
 };
 
 /* terminate a thread */
 //TODO: figure out how to store return value correctly.
 void my_pthread_exit(void *value_ptr) {
+	
+	if(timer != NULL){
+		pause_timer();
+	}
 	
 	printf("\nEXIT:");
 	//@DEBUG: We don't want to do this once we start implementing join. Or do we? 
@@ -221,26 +261,20 @@ void my_pthread_exit(void *value_ptr) {
 		printf("\tRunning queue is empty.\n");
 	}
 	
-	//termination flag = true; 
-	/*
-	terminates the calling thread and returns a value via value_ptr that is available to
-	another thread in the same process that calls pthread_join.
-
-    Thread is cleaned up.
-
-	Process-shared resources (e.g., mutexes, condition variables, semaphores, and file descriptors) 
-	are not released. User must do this.
-
-	After the last thread in a process terminates, the process terminates as by calling exit(3) with an exit status of zero; 
-	thus, process-shared resources are released 
-	
-	*/
+	if(timer != NULL){
+		start_timer();
+	}
 	return;
 };
 
 /* wait for thread termination */
 //TODO: figure out how to retrieve return value correctly.
 int my_pthread_join(my_pthread_t thread, void **value_ptr) {
+	
+	if(timer!= NULL){
+		pause_timer();
+	}
+	
 	printf("\nJOIN:");
 	thread->joining_thread_ptr = currently_running_thread;
 	thread->value_ptr = value_ptr;
@@ -256,6 +290,10 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 		setcontext(currently_running_thread->context_ptr); 
 	}
 	
+	if(timer != NULL){
+		start_timer();
+	}
+	return;
 	/*
 	
 	The terminating thread would set a flag to indicate termination and broadcast a condition that is part of that state; 
@@ -275,7 +313,6 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	
 	*/
 	
-	return;
 };
 
 /* initial the mutex lock */
