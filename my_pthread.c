@@ -87,6 +87,15 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	if(running_queue == NULL && waiting_queue == NULL && currently_running_thread == NULL){
 		
 		make_main = 1;
+		memset(&sa, 0, sizeof(sa));
+		sa.sa_handler =&my_pthread_yield;
+		sigaction(SIGPROF, &sa, NULL);
+		
+		timer.it_value.tv_sec = 0;
+		timer.it_value.tv_usec = 250000;
+		timer.it_interval.tv_sec = 0;
+		timer.it_interval.tv_usec = 250000;
+		setitimer (ITIMER_VIRTUAL, &timer, NULL);
 	}
 	
 	//Creates a new context pointed to by block.	
@@ -124,7 +133,10 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield() {
 	
+	printf("\t\ttime's up!\n");
 	//Fire some sort of signal.
+	
+	//figure out how to refactor exit(), create(), and join() scheduling stuff into this.
 	
 	return 0;
 };
@@ -179,7 +191,7 @@ void my_pthread_exit(void *value_ptr) {
 			printf("ERROR: the terminating thread was joined, but no waiting queue exists.\n");
 		}
 	}
-	//yielding stuff
+
 	if(running_queue != NULL){		
 		//set currently running thread to top of running queue and remove first entry from running queue. 
 		currently_running_thread = dequeue(&running_queue);
