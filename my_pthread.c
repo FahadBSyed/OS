@@ -367,6 +367,10 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 	if(mutex->flag == 0){
 		free(mutex);
 	}
+<<<<<<< HEAD
+=======
+
+>>>>>>> a394991e738b39439d7ab3fc74b07159aa80f77c
 	return 0;
 };
 
