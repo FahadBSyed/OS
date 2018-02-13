@@ -190,6 +190,7 @@ int my_pthread_yield() {
 	
 	if(timer != NULL){
 		start_timer();
+		printf("starting timer.\n");
 	}
 	return 0;
 };
@@ -263,6 +264,7 @@ void my_pthread_exit(void *value_ptr) {
 	
 	if(timer != NULL){
 		start_timer();
+		printf("starting timer.\n");
 	}
 	return;
 };
@@ -292,6 +294,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	
 	if(timer != NULL){
 		start_timer();
+		printf("starting timer.\n");
 	}
 	return;
 	/*
@@ -318,17 +321,19 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 /* initial the mutex lock */
 int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) {
 	if(mutex == NULL){
-		return EINVAL;
+		return -1;
+		return;
 	}
 
-	mutext->flag = 0;	
+	mutex->flag = 0;	
 	return 0;
 };
 
 /* aquire the mutex lock */
 int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 	if(mutex == NULL) {
-		return EINVAL;
+		return -1;
+		return;
 	}
 
 	if(mutex->flag == 0) {
@@ -351,14 +356,14 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 /* destroy the mutex */
 int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 	if(mutex == NULL){
-		return EINVAL;
+		return -1;
+		return;
 	}
 
 	if(mutex->flag == 0){
 		free(mutex);
 	}
 
-	return 0;
 	return 0;
 };
 

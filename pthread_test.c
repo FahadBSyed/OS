@@ -17,7 +17,7 @@ void* test_func2(){
 	int c = 0;
 	pthread_t thread3;
 	pthread_create(&thread3, NULL, (void*)&test_func3, NULL);
-	sleep(1);
+	
 	pthread_join(thread3, NULL);
 	pthread_exit(&c);
 }
@@ -32,7 +32,7 @@ void* test_func(void* x){
 	pthread_t thread2;
 	printf("creating thread 2\n");
 	pthread_create(&thread2, NULL, (void*)&test_func2, NULL);
-	sleep(1);
+	
 	pthread_join(thread2, NULL);
 	pthread_exit(&c);
 }
@@ -51,7 +51,13 @@ int main(int argc, char** argv){
 
 	int* ret; 
 	int counter = 0;
-	sleep(1);
+	int math = 0;
+	/*while(counter < 10000){
+		int math = math + counter * 2;
+		counter++;
+		printf("math: %d\n", math);
+	}*/
+	
 	pthread_join(thread, (void**)&ret);
 	printf("\treturn value from the thread is %d\n", ret);
 	pthread_exit(NULL);
