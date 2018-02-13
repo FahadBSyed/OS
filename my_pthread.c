@@ -322,7 +322,6 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) {
 	if(mutex == NULL){
 		return -1;
-		return;
 	}
 
 	mutex->flag = 0;	
@@ -341,7 +340,7 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 	}	
 
 	while(__atomic_test_and_set(&(mutex->flag), 1) == 1){
-		
+		return;
 	}
 
 	return 0;
@@ -351,7 +350,7 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 	if (mutex==NULL)
 	{
-		return EINVAL;
+		return -1;
 	}
 	__sync_synchronize();
 	mutex->flag = 0;
@@ -363,17 +362,11 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 	if(mutex == NULL){
 		return -1;
-		return;
 	}
 
 	if(mutex->flag == 0){
 		free(mutex);
 	}
-<<<<<<< HEAD
-
-=======
-	
->>>>>>> 950a90d9e8d6d60f07ec273e5e3c5388c2df9371
 	return 0;
 };
 
