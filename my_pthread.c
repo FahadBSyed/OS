@@ -49,9 +49,9 @@ void start_timer(){
 	}
 	
 	timer->it_value.tv_sec = 0;
-	timer->it_value.tv_usec = 2500;
+	timer->it_value.tv_usec = 250;
 	timer->it_interval.tv_sec = 0;
-	timer->it_interval.tv_usec = 2500;
+	timer->it_interval.tv_usec = 250;
 	setitimer (ITIMER_REAL, timer, NULL);
 	return;
 }
@@ -175,12 +175,13 @@ int my_pthread_yield() {
 	
 	//swap currently running context with the first context in the queue. 
 	
-	tcb* block = currently_running_thread;
+	
 	if(running_queue != NULL){
-		currently_running_thread = dequeue(&running_queue);
-		enqueue(&running_queue, block);
-		printf("\trunning thread (tcb*) %x from running queue.\n", currently_running_thread);
-		swapcontext(block->context_ptr, currently_running_thread->context_ptr);
+		tcb* block = currently_running_thread;
+		//enqueue(&running_queue, block);
+		//currently_running_thread = dequeue(&running_queue);
+		//printf("\trunning thread (tcb*) %x from running queue.\n", currently_running_thread);
+		//swapcontext(block->context_ptr, currently_running_thread->context_ptr);
 		return;
 	}
 	else{
@@ -214,7 +215,7 @@ void my_pthread_exit(void *value_ptr) {
 		
 		joiner = currently_running_thread->joining_thread_ptr;
 		joiner->value_ptr = value_ptr;
-		printf("\tthread (tcb *) %x was joined by thread (tcb*) %x.\n", currently_running_thread, joiner);
+		printf("\tthread (tcb *) %x was joined by thread (tcb*) %x.\n\n\t\twaiting queue:\n", currently_running_thread, joiner);
 	}
 	free(block);
 
@@ -230,19 +231,28 @@ void my_pthread_exit(void *value_ptr) {
 			//move waiting_ptr to the joiner, move prev_ptr to 1 before the waiting_ptr.
 			while (waiting_ptr != NULL && waiting_ptr->tcb != joiner){
 				prev_ptr = waiting_ptr;
+				printf("\t\tthread (tcb*) %x\n", waiting_ptr->tcb);
 				waiting_ptr = waiting_ptr->next;
 			}
+			if(waiting_ptr != NULL){
+				printf("\t\tthread (tcb*) %x\n\n", waiting_ptr->tcb);
+			}
 			//we are at the joiner.
-			if(prev_ptr != NULL){
+			if(prev_ptr != NULL && waiting_ptr != NULL){
 				prev_ptr->next = waiting_ptr->next;
 			}
-			if(waiting_ptr->tcb == joiner){
+			if(waiting_ptr != NULL && waiting_ptr->tcb == joiner){
 				printf("\tfound the joiner.\n");
 			}
-			waiting_ptr->next = NULL;
-			currently_running_thread = waiting_ptr->tcb;
-			printf("\trunning thread (tcb*) %x from waiting queue.\n", currently_running_thread);
-			setcontext(currently_running_thread->context_ptr);
+			if(waiting_ptr != NULL){
+				waiting_ptr->next = NULL;
+				currently_running_thread = waiting_ptr->tcb;
+				printf("\trunning thread (tcb*) %x from waiting queue.\n", currently_running_thread);
+				setcontext(currently_running_thread->context_ptr);
+			}
+			else{
+				printf("ERROR: could not find joiner.\n");
+			}
 			return;
 			
 		}

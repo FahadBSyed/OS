@@ -52,11 +52,13 @@ int main(int argc, char** argv){
 	int* ret; 
 	int counter = 0;
 	int math = 0;
-	/*while(counter < 10000){
+	while(counter < 10000){
 		int math = math + counter * 2;
 		counter++;
-		printf("math: %d\n", math);
-	}*/
+		if(counter % 100 == 0){
+			printf("math: %d\n", math);
+		}
+	}
 	
 	pthread_join(thread, (void**)&ret);
 	printf("\treturn value from the thread is %d\n", ret);
