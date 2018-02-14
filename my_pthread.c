@@ -70,10 +70,26 @@ void pause_timer(){
 	return;
 }
 
+void print_wait_queue(){
+	printf("wait queue:\n");
+	if(waiting_queue == NULL){
+		printf("\t\x1b[33mwait queue is null.\x1b[0m\n");
+	}
+	else{
+		tcb_node* waiting_ptr = waiting_queue;
+		while(waiting_ptr != NULL){
+			printf("\t\x1b[33mthread (tcb*) %x\x1b[0m\n", waiting_ptr->tcb);
+			waiting_ptr = waiting_ptr->next;
+		}
+	}
+	printf("\n");
+}
 
 //This function takes the address of one of our queues. It then removes the first node in the queue.
 //TODO: possibly clean up and free taken node.
 tcb* dequeue(tcb_node** queue){
+	
+	
 	if(*queue == NULL || (*queue)->tcb == NULL){
 		printf("ERROR: queue or queue's tcb is null.\n");
 		return NULL;
@@ -81,6 +97,8 @@ tcb* dequeue(tcb_node** queue){
 	tcb_node* queue_ptr = *queue;
 	*queue = (*queue)->next;
 	queue_ptr->next = NULL;
+	
+	//printf("\t\x1b[32mdequeued thread (tcb*) %x.\x1b[0m\n", queue_ptr->tcb);
 	return queue_ptr->tcb;
 }
 
@@ -104,6 +122,8 @@ void enqueue(tcb_node** queue, tcb* block){
 		ptr->next->tcb = block;
 		ptr->next->next = NULL;
 	}
+	//printf("\t\x1b[32menqueued thread (tcb*) %x.\x1b[0m\n", block);
+
 }
 
 
@@ -145,8 +165,8 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	block->context_ptr->uc_stack.ss_flags=0;
 	
 	makecontext(block->context_ptr, (void*)function, 1, arg);
-	//@DEBUG: Do error handing on makecontext().
 	
+	//@DEBUG: Do error handing on makecontext().
 	enqueue(&running_queue, block);
 	printf("\tadded thread (tcb*) %x to running queue.\n", block);
 	
@@ -172,16 +192,15 @@ int my_pthread_yield() {
 	
 	printf("\x1b[32m\ttime's up\x1b[0m\n");
 	//Fire some sort of signal.
-	
 	//swap currently running context with the first context in the queue. 
 	
 	
 	if(running_queue != NULL){
 		tcb* block = currently_running_thread;
-		//enqueue(&running_queue, block);
-		//currently_running_thread = dequeue(&running_queue);
-		//printf("\trunning thread (tcb*) %x from running queue.\n", currently_running_thread);
-		//swapcontext(block->context_ptr, currently_running_thread->context_ptr);
+		enqueue(&running_queue, block);
+		currently_running_thread = dequeue(&running_queue);
+		printf("\trunning thread (tcb*) %x from running queue.\n", currently_running_thread);
+		swapcontext(block->context_ptr, currently_running_thread->context_ptr);
 		return;
 	}
 	else{
@@ -215,7 +234,7 @@ void my_pthread_exit(void *value_ptr) {
 		
 		joiner = currently_running_thread->joining_thread_ptr;
 		joiner->value_ptr = value_ptr;
-		printf("\tthread (tcb *) %x was joined by thread (tcb*) %x.\n\n\t\twaiting queue:\n", currently_running_thread, joiner);
+		printf("\tthread (tcb *) %x was joined by thread (tcb*) %x.\n", currently_running_thread, joiner);
 	}
 	free(block);
 
@@ -228,30 +247,37 @@ void my_pthread_exit(void *value_ptr) {
 			tcb_node* prev_ptr = NULL;
 			tcb_node* waiting_ptr = waiting_queue;
 			
-			//move waiting_ptr to the joiner, move prev_ptr to 1 before the waiting_ptr.
-			while (waiting_ptr != NULL && waiting_ptr->tcb != joiner){
+			while(waiting_ptr != NULL && waiting_ptr->tcb != joiner){
 				prev_ptr = waiting_ptr;
-				printf("\t\tthread (tcb*) %x\n", waiting_ptr->tcb);
 				waiting_ptr = waiting_ptr->next;
 			}
-			if(waiting_ptr != NULL){
-				printf("\t\tthread (tcb*) %x\n\n", waiting_ptr->tcb);
+			if(waiting_ptr == NULL){
+				printf("Could not find the joiner.\n");
 			}
-			//we are at the joiner.
-			if(prev_ptr != NULL && waiting_ptr != NULL){
-				prev_ptr->next = waiting_ptr->next;
-			}
-			if(waiting_ptr != NULL && waiting_ptr->tcb == joiner){
-				printf("\tfound the joiner.\n");
-			}
-			if(waiting_ptr != NULL){
-				waiting_ptr->next = NULL;
-				currently_running_thread = waiting_ptr->tcb;
+			
+			printf("\tfound the joiner.\n");
+			//covers case where joiner is at the top of the list.
+			if(prev_ptr == NULL){
+				currently_running_thread = dequeue(&waiting_queue);
 				printf("\trunning thread (tcb*) %x from waiting queue.\n", currently_running_thread);
+
+				if(timer != NULL){
+					start_timer();
+					printf("starting timer.\n");
+				}
 				setcontext(currently_running_thread->context_ptr);
 			}
 			else{
-				printf("ERROR: could not find joiner.\n");
+				prev_ptr->next = waiting_ptr->next;
+				currently_running_thread = waiting_ptr->tcb;
+				waiting_ptr->next = NULL;
+				printf("\trunning thread (tcb*) %x from waiting queue.\n", currently_running_thread);
+
+				if(timer != NULL){
+					start_timer();
+					printf("starting timer.\n");
+				}
+				setcontext(currently_running_thread->context_ptr);
 			}
 			return;
 			
@@ -265,16 +291,17 @@ void my_pthread_exit(void *value_ptr) {
 		//set currently running thread to top of running queue and remove first entry from running queue. 
 		currently_running_thread = dequeue(&running_queue);
 		printf("\trunning thread (tcb*) %x from running queue.\n", currently_running_thread);
+		
+		//DEBUG
+		if(timer != NULL){
+			start_timer();
+			printf("starting timer.\n");
+		}
 		setcontext(currently_running_thread->context_ptr);
 		return;
 	}
 	else{
 		printf("\tRunning queue is empty.\n");
-	}
-	
-	if(timer != NULL){
-		start_timer();
-		printf("starting timer.\n");
 	}
 	return;
 };
@@ -288,6 +315,9 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	}
 	
 	printf("\nJOIN:");
+	
+	//DEBUG
+	
 	thread->joining_thread_ptr = currently_running_thread;
 	thread->value_ptr = value_ptr;
 	printf("\tthread (tcb *) %x joins thread (tcb*) %x.\n", currently_running_thread, thread);
@@ -299,13 +329,16 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 		
 		currently_running_thread = dequeue(&running_queue);
 		printf("\trunning thread (tcb *) %x.\n", currently_running_thread);
+		
+		if(timer != NULL){
+			start_timer();
+			printf("starting timer.\n");
+		}
+		
 		setcontext(currently_running_thread->context_ptr); 
 	}
 	
-	if(timer != NULL){
-		start_timer();
-		printf("starting timer.\n");
-	}
+
 	return;
 	/*
 	
