@@ -52,7 +52,7 @@ int main(int argc, char** argv){
 	int* ret; 
 	int counter = 0;
 	int math = 0;
-	while(counter < 10000){
+	while(counter < 1000){
 		int math = math + counter * 2;
 		printf("math: %d\n", counter++);
 	}

@@ -10,36 +10,13 @@
 
 
 /*
-	NOTES:
-		I think the scheduler is supposed to set the current context. 
-		We need a way to pass context information from this library to the scheduler.
-		The scheduler should have a linked list or priority heap of contexts. 
-		
-		Dr. Francisco was saying that we should have the scheduler live within this library and every
-		thread function call should call the scheduler and get it to do what it needs. 
-		Signal handler is basically just a call to yield. 
-		
-		In scheduler, we have to implement mutexes, mutexes are ways to protect memory. Scheduler can
-		also protect memory. We should use the scheduler to check if a mutex is currently in used and
-		the scheduler should not schedule them to run until someone calls unlock() on the mutex
-		
-		When we lock or unlock a mutex, we modify the state of who gets to run, when. If we lock, this
-		context cannot be computed unless the scheduler says its okay.
-		
-		When we create, join, or exit, we change scheduling state.
-		Yield does not change scheduling state - it relinquishes remaining runtime
-		Yield is a direct call to the scheduler
-		Yield is essentially the scheduler.
-		
-		Join - update state, then yield
-		Exit - update state, then yield
-		Create - add a context to the system, figure out who runs next, then yield
-		Yield - the scheduler 
-		
-		signal handler .. yield!
-		
-		TODO: figure out how to return to main if we don't have context for it. 
+	QUESTIONS:
+	why won't itimer_virtual work?
+	why does execution pause randomly sometimes?
+	how can I set the itimer to block instead of reset the timer.
 */
+
+//TODO: do not free TCBs, make a terminated queue and use that as a record for return values. 
 
 void start_timer(){
 	
@@ -48,11 +25,10 @@ void start_timer(){
 		return;
 	}
 	
-	timer->it_value.tv_sec = 0;
-	timer->it_value.tv_usec = 25;
-	timer->it_interval.tv_sec = 0;
-	timer->it_interval.tv_usec = 25;
+	sa->sa_mask = block_mask;	
 	setitimer (ITIMER_REAL, timer, NULL);
+	/*
+	*/
 	return;
 }
 
@@ -62,11 +38,13 @@ void pause_timer(){
 		printf("ERROR: timer was uninitialized.\n");
 		return;
 	}
+	sa->sa_mask = empty_mask;
+	/*
 	timer->it_value.tv_sec = 0;
 	timer->it_value.tv_usec = 0;
 	timer->it_interval.tv_sec = 0;
 	timer->it_interval.tv_usec = 0;
-	setitimer (ITIMER_REAL, timer, NULL);
+	setitimer (ITIMER_REAL, timer, NULL);*/
 	return;
 }
 
@@ -85,6 +63,21 @@ void print_wait_queue(){
 	printf("\n");
 }
 
+void print_run_queue(){
+	printf("run queue:\n");
+	if(running_queue == NULL){
+		printf("\t\x1b[33mrunning queue is null.\x1b[0m\n");
+	}
+	else{
+		tcb_node* running_ptr = running_queue;
+		while(running_ptr != NULL){
+			printf("\t\x1b[33mthread (tcb*) %x\x1b[0m\n", running_ptr->tcb);
+			running_ptr = running_ptr->next;
+		}
+	}
+	printf("\n");
+}
+
 //This function takes the address of one of our queues. It then removes the first node in the queue.
 //TODO: possibly clean up and free taken node.
 tcb* dequeue(tcb_node** queue){
@@ -97,7 +90,6 @@ tcb* dequeue(tcb_node** queue){
 	tcb_node* queue_ptr = *queue;
 	*queue = (*queue)->next;
 	queue_ptr->next = NULL;
-	
 	
 	tcb* block = malloc(sizeof(tcb));
 	memcpy(block, queue_ptr->tcb, sizeof(tcb));
@@ -149,12 +141,22 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 		make_main = 1;
 		
 		printf("\tMaking timer.\n");
+		sigemptyset(&block_mask);
+		sigaddset(&block_mask, SIGALRM);
+		sigemptyset(&empty_mask);
+		
 		sa = malloc(sizeof(struct sigaction));
 		timer = malloc(sizeof(struct itimerval)); 
 		memset(sa, 0, sizeof(*sa));
 		memset(timer, 0, sizeof(*timer));
+		
 		sa->sa_handler = &my_pthread_yield;
 		sigaction(SIGALRM, sa, NULL);
+		
+		timer->it_value.tv_sec = 0;
+		timer->it_value.tv_usec = 250;
+		timer->it_interval.tv_sec = 0;
+		timer->it_interval.tv_usec = 250;
 	}
 	
 	//Creates a new context pointed to by block.	
@@ -203,6 +205,7 @@ int my_pthread_yield() {
 	
 	
 	if(running_queue != NULL){
+		print_run_queue();
 		tcb* block = currently_running_thread;
 		enqueue(&running_queue, block);
 		currently_running_thread = dequeue(&running_queue);
