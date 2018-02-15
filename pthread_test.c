@@ -7,58 +7,60 @@
 
 void* test_func3(){
 	
-	printf("\nwe called test_func3.\n");
+	printf("\n\x1b[36mwe called test_func3.\x1b[0m\n");
 	pthread_exit(NULL);
 }
 
 void* test_func2(){
 	
-	printf("\nwe called test_func 2\n");
-	int c = 0;
+	printf("\n\x1b[36mwe called test_func 2.\x1b[0m\n");
+	int* D = malloc(sizeof(int));
+	*D = 25;
+	printf("\x1b[36mD is %d\x1b[0m\n", *D);
 	pthread_t thread3;
 	pthread_create(&thread3, NULL, (void*)&test_func3, NULL);
 	
 	pthread_join(thread3, NULL);
-	pthread_exit(&c);
+	pthread_exit(D);
 }
 
 void* test_func(void* x){
 	
-	printf("\nwe called test_func\n");
-	int c = *(int*)x;
-	printf("C is %d\n", c);
-	c *=2;
+	printf("\n\x1b[36mwe called test_func.\x1b[0m\n");
+	int* c = (int*)x;
+	*c *=2;
+	printf("\x1b[36mC is %d\x1b[0m\n", *c);
 	
 	pthread_t thread2;
-	printf("creating thread 2\n");
-	pthread_create(&thread2, NULL, (void*)&test_func2, NULL);
+	//printf("\x1b[36mcreating thread 2.\x1b[0m\n");
+	//pthread_create(&thread2, NULL, (void*)&test_func2, NULL);
 	
-	pthread_join(thread2, NULL);
-	pthread_exit(&c);
+	//pthread_join(thread2, NULL);
+	pthread_exit(c);
 }
 
 int main(int argc, char** argv){
 	
-	printf("hello world.\n");
+	printf("\x1b[36mhello world.\x1b[0m\n");
 	
 	pthread_t thread;
 	int x = 10;
 	int error = pthread_create(&thread, NULL, (void*)&test_func, &x);
 	if (error != 0){
-		printf("can't create thread :[%s]", strerror(error));
+		printf("\x1b[36mcan't create thread :[%s]\x1b[0m", strerror(error));
 		return;
 	}
 
 	int* ret; 
 	int counter = 0;
 	int math = 0;
-	while(counter < 1000){
+	while(counter < 10000){
 		int math = math + counter * 2;
-		printf("math: %d\n", counter++);
+		counter++;
 	}
 	
 	pthread_join(thread, (void**)&ret);
-	printf("\treturn value from the thread is %d\n", ret);
+	printf("\x1b[36mreturn value from the thread is %d\x1b[0m\n", ret);
 	pthread_exit(NULL);
 }
 

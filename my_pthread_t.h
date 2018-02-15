@@ -62,11 +62,12 @@ typedef struct my_pthread_mutex_t {
  
  tcb_node* running_queue;
  tcb_node* waiting_queue;
+ tcb_node* terminated_queue;
  
 struct sigaction* sa;
 sigset_t block_mask;
-sigset_t empty_mask;
-struct itimerval* timer; 
+struct itimerval* timer;
+int schedule_lock;
 
 /* Function Declarations: */
 #define my_pthread_t pthread_t
