@@ -31,10 +31,10 @@ void init_signal_handler(){
 	sigaction(SIGALRM, sa, NULL);
 	sa->sa_mask = block_mask;
 	
-	timer->it_value.tv_sec = 1;
-	timer->it_value.tv_usec = 2000;
-	timer->it_interval.tv_sec = 1;
-	timer->it_interval.tv_usec = 2000;
+	timer->it_value.tv_sec = 0;
+	timer->it_value.tv_usec = 250;
+	timer->it_interval.tv_sec = 0;
+	timer->it_interval.tv_usec = 250;
 	setitimer (ITIMER_REAL, timer, NULL);
 }
 
