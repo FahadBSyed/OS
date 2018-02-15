@@ -49,9 +49,9 @@ void start_timer(){
 	}
 	
 	timer->it_value.tv_sec = 0;
-	timer->it_value.tv_usec = 250;
+	timer->it_value.tv_usec = 25;
 	timer->it_interval.tv_sec = 0;
-	timer->it_interval.tv_usec = 250;
+	timer->it_interval.tv_usec = 25;
 	setitimer (ITIMER_REAL, timer, NULL);
 	return;
 }
@@ -98,8 +98,15 @@ tcb* dequeue(tcb_node** queue){
 	*queue = (*queue)->next;
 	queue_ptr->next = NULL;
 	
+	
+	tcb* block = malloc(sizeof(tcb));
+	memcpy(block, queue_ptr->tcb, sizeof(tcb));
+	free(queue_ptr);
+	
+	return block;
+	
 	//printf("\t\x1b[32mdequeued thread (tcb*) %x.\x1b[0m\n", queue_ptr->tcb);
-	return queue_ptr->tcb;
+	//return queue_ptr->tcb;
 }
 
 //This function takes the address of one of our queues and a pointer to a tcb. It then adds the tcb
@@ -210,7 +217,7 @@ int my_pthread_yield() {
 	
 	if(timer != NULL){
 		start_timer();
-		printf("starting timer.\n");
+		printf("\tstarting timer.\n");
 	}
 	return 0;
 };
@@ -337,27 +344,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 		
 		setcontext(currently_running_thread->context_ptr); 
 	}
-	
-
 	return;
-	/*
-	
-	The terminating thread would set a flag to indicate termination and broadcast a condition that is part of that state; 
-	a joining thread would wait on that condition variable. 
-	While such a technique would allow a thread to wait on more complex conditions (for example, waiting for multiple 
-	threads to terminate), waiting on individual thread termination is considered widely useful. Also, including the 
-	pthread_join() function in no way precludes a programmer from coding such complex waits. Thus, while not a primitive, 
-	including pthread_join() in this volume of POSIX.1-2008 was considered valuable.
-	
-	The pthread_join() function provides a simple mechanism allowing an application to wait for a thread to terminate. 
-	After the thread terminates, the application may then choose to clean up resources that were used by the thread. 
-	For instance, after pthread_join() returns, any application-provided stack storage could be reclaimed.
-	
-	The pthread_join() or pthread_detach() function should eventually be called for every thread that is created with 
-	the detachstate attribute set to PTHREAD_CREATE_JOINABLE so that storage associated with the thread may be reclaimed.
-	
-	
-	*/
 	
 };
 

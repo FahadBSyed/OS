@@ -54,10 +54,7 @@ int main(int argc, char** argv){
 	int math = 0;
 	while(counter < 10000){
 		int math = math + counter * 2;
-		counter++;
-		if(counter % 100 == 0){
-			printf("math: %d\n", math);
-		}
+		printf("math: %d\n", counter++);
 	}
 	
 	pthread_join(thread, (void**)&ret);
