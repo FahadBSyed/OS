@@ -11,12 +11,12 @@
 
 /*
 	QUESTIONS:
-	why won't itimer_virtual work?
-	why does execution pause randomly sometimes?
-	how can I set the itimer to block instead of reset the timer.
+	why does execution pause randomly sometimes? (is this still a problem?)
+	
+	TODO: do not free TCBs, make a terminated queue and use that as a record for return values. (is this done?)
+	TODO: create 3 run queues: short_run, med_run, fifo_run
 */
 
-//TODO: do not free TCBs, make a terminated queue and use that as a record for return values. 
 
 void init_signal_handler(){
 	sigemptyset(&block_mask);
@@ -62,7 +62,7 @@ tcb* dequeue(tcb_node** queue){
 		printf("ERROR: queue or queue's tcb is null.\n");
 		return NULL;
 	}
-	if(*queue == running_queue){print_queue(&running_queue, "run queue");}
+	if(*queue == short_run_queue){print_queue(&short_run_queue, "run queue");}
 	if(*queue == waiting_queue){print_queue(&waiting_queue, "wait queue");}
 	tcb_node* queue_ptr = *queue;
 	*queue = (*queue)->next;
@@ -82,7 +82,7 @@ void enqueue(tcb_node** queue, tcb* block){
 		*queue = malloc(sizeof(tcb_node));
 		(*queue)->tcb = block;
 		(*queue)->next = NULL;
-		if(*queue == running_queue){print_queue(&running_queue, "run queue");}
+		if(*queue == short_run_queue){print_queue(&short_run_queue, "run queue");}
 		if(*queue == waiting_queue){print_queue(&waiting_queue, "wait queue");}
 	}
 	else{
@@ -95,7 +95,7 @@ void enqueue(tcb_node** queue, tcb* block){
 		ptr->next = malloc(sizeof(tcb_node));
 		ptr->next->tcb = block;
 		ptr->next->next = NULL;
-		if(*queue == running_queue){print_queue(&running_queue, "run queue");}
+		if(*queue == short_run_queue){print_queue(&short_run_queue, "run queue");}
 		if(*queue == waiting_queue){print_queue(&waiting_queue, "wait queue");}
 	}
 	//printf("\t\x1b[32menqueued thread (tcb*) %x.\x1b[0m\n", block);
@@ -112,7 +112,7 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	//create the main context if all of our data structures are unallocated. 
 	//The main context is the thread that represents main()
 	char make_main = 0;
-	if(running_queue == NULL && waiting_queue == NULL && currently_running_thread == NULL){
+	if(short_run_queue == NULL && waiting_queue == NULL && currently_running_thread == NULL){
 		
 		make_main = 1;
 
@@ -137,7 +137,7 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	makecontext(block->context_ptr, (void*)function, 1, arg);
 	
 	//@DEBUG: Do error handing on makecontext().
-	enqueue(&running_queue, block);
+	enqueue(&short_run_queue, block);
 	printf("\tadded thread (tcb*) %x to running queue.\n", block);
 	
 	//Make the context at the end so we don't redo the creation of the thread.
@@ -160,17 +160,17 @@ int my_pthread_yield() {
 	//Fire some sort of signal.
 	//swap currently running context with the first context in the queue. 
 		
-	if(running_queue != NULL && schedule_lock == 0){
+	if(short_run_queue != NULL && schedule_lock == 0){
 		tcb* block = currently_running_thread;
-		enqueue(&running_queue, block);
-		currently_running_thread = dequeue(&running_queue);
+		enqueue(&short_run_queue, block);
+		currently_running_thread = dequeue(&short_run_queue);
 		printf("\trunning thread (tcb*) %x from running queue.\n", currently_running_thread);		
 		swapcontext(block->context_ptr, currently_running_thread->context_ptr);
 		return;
 	}
 	else{
 		
-		if(running_queue == NULL){ printf("\tRunning queue is empty.\n"); }
+		if(short_run_queue == NULL){ printf("\tRunning queue is empty.\n"); }
 		if(schedule_lock == 1){ printf("\ta function is scheduling.\n"); }
 	}
 	
@@ -192,7 +192,7 @@ void my_pthread_exit(void *value_ptr) {
 	if(currently_running_thread->joining_thread_ptr){
 		
 		joiner = currently_running_thread->joining_thread_ptr;
-		joiner->value_ptr = value_ptr;
+		*((double **)joiner->value_ptr) = (double*)value_ptr;
 		printf("\tthread (tcb *) %x was joined by thread (tcb*) %x.\n", currently_running_thread, joiner);
 	}
 	enqueue(&terminated_queue, block);
@@ -241,9 +241,9 @@ void my_pthread_exit(void *value_ptr) {
 		}
 	}
 
-	if(running_queue != NULL){		
+	if(short_run_queue != NULL){		
 		//set currently running thread to top of running queue and remove first entry from running queue.
-		currently_running_thread = dequeue(&running_queue);
+		currently_running_thread = dequeue(&short_run_queue);
 		
 		if(currently_running_thread != NULL){
 			printf("\trunning thread (tcb*) %x from running queue.\n", currently_running_thread);
@@ -279,7 +279,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	enqueue(&waiting_queue, block);
 	getcontext(block->context_ptr);
 	
-	currently_running_thread = dequeue(&running_queue);
+	currently_running_thread = dequeue(&short_run_queue);
 	if(currently_running_thread != NULL){
 		printf("\trunning thread (tcb*) %x from running queue.\n", currently_running_thread);
 		schedule_lock = 0;
