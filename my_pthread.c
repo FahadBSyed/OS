@@ -27,14 +27,14 @@ void init_signal_handler(){
 	memset(sa, 0, sizeof(*sa));
 	memset(timer, 0, sizeof(*timer));
 	
-	sa->sa_handler = &my_pthread_yield;
+	sa->sa_handler = (void*)&my_pthread_yield;
 	sigaction(SIGALRM, sa, NULL);
 	sa->sa_mask = block_mask;
 	
 	timer->it_value.tv_sec = 0;
-	timer->it_value.tv_usec = 250;
+	timer->it_value.tv_usec = 8000;
 	timer->it_interval.tv_sec = 0;
-	timer->it_interval.tv_usec = 250;
+	timer->it_interval.tv_usec = 8000;
 	setitimer (ITIMER_REAL, timer, NULL);
 }
 
@@ -62,7 +62,10 @@ tcb* dequeue(tcb_node** queue){
 		printf("ERROR: queue or queue's tcb is null.\n");
 		return NULL;
 	}
-	if(*queue == short_run_queue){print_queue(&short_run_queue, "run queue");}
+	if(*queue == short_run_queue){print_queue(&short_run_queue, "short run queue");}
+	if(*queue == med_run_queue){print_queue(&med_run_queue, "medium run queue");}
+	if(*queue == FIFO_run_queue){print_queue(&FIFO_run_queue, "FIFO run queue");}
+	if(*queue == terminated_queue){print_queue(&terminated_queue, "terminated queue");}
 	if(*queue == waiting_queue){print_queue(&waiting_queue, "wait queue");}
 	tcb_node* queue_ptr = *queue;
 	*queue = (*queue)->next;
@@ -82,7 +85,10 @@ void enqueue(tcb_node** queue, tcb* block){
 		*queue = malloc(sizeof(tcb_node));
 		(*queue)->tcb = block;
 		(*queue)->next = NULL;
-		if(*queue == short_run_queue){print_queue(&short_run_queue, "run queue");}
+		if(*queue == short_run_queue){print_queue(&short_run_queue, "short run queue");}
+		if(*queue == med_run_queue){print_queue(&med_run_queue, "medium run queue");}
+		if(*queue == FIFO_run_queue){print_queue(&FIFO_run_queue, "FIFO run queue");}
+		if(*queue == terminated_queue){print_queue(&terminated_queue, "terminated queue");}
 		if(*queue == waiting_queue){print_queue(&waiting_queue, "wait queue");}
 	}
 	else{
@@ -95,7 +101,10 @@ void enqueue(tcb_node** queue, tcb* block){
 		ptr->next = malloc(sizeof(tcb_node));
 		ptr->next->tcb = block;
 		ptr->next->next = NULL;
-		if(*queue == short_run_queue){print_queue(&short_run_queue, "run queue");}
+		if(*queue == short_run_queue){print_queue(&short_run_queue, "short run queue");}
+		if(*queue == med_run_queue){print_queue(&med_run_queue, "medium run queue");}
+		if(*queue == FIFO_run_queue){print_queue(&FIFO_run_queue, "FIFO run queue");}
+		if(*queue == terminated_queue){print_queue(&terminated_queue, "terminated queue");}
 		if(*queue == waiting_queue){print_queue(&waiting_queue, "wait queue");}
 	}
 	//printf("\t\x1b[32menqueued thread (tcb*) %x.\x1b[0m\n", block);
@@ -156,7 +165,8 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield() {
 	
-	printf("\x1b[32m\ntime's up\x1b[0m\n");
+	//printf("\x1b[32m\ntime's up\x1b[0m\n");
+	//printf("currently running thread (tcb*): %x\n", currently_running_thread);
 	//Fire some sort of signal.
 	//swap currently running context with the first context in the queue. 
 		
@@ -164,14 +174,15 @@ int my_pthread_yield() {
 		tcb* block = currently_running_thread;
 		enqueue(&short_run_queue, block);
 		currently_running_thread = dequeue(&short_run_queue);
-		printf("\trunning thread (tcb*) %x from running queue.\n", currently_running_thread);		
+		
+		printf("YIELD:\n\trunning thread (tcb*) %x from running queue.\n", currently_running_thread);		
 		swapcontext(block->context_ptr, currently_running_thread->context_ptr);
 		return;
 	}
 	else{
 		
-		if(short_run_queue == NULL){ printf("\tRunning queue is empty.\n"); }
-		if(schedule_lock == 1){ printf("\ta function is scheduling.\n"); }
+		//if(short_run_queue == NULL){ printf("\tRunning queue is empty.\n"); }
+		//if(schedule_lock == 1){ printf("\ta function is scheduling.\n"); }
 	}
 	
 	//figure out how to refactor exit(), create(), and join() scheduling stuff into this.
@@ -184,16 +195,28 @@ void my_pthread_exit(void *value_ptr) {
 	
 	schedule_lock = 1;
 	printf("\nEXIT:\n");
-	
-	//move the currently_running_thread to block and free block. 
+	printf("currently running thread (tcb*): %x\n", currently_running_thread);
+
+	//move the currently_running_thread to block and put block on terminated queue
 	tcb* block = currently_running_thread;
 	tcb* joiner = NULL;
+	
+	if(currently_running_thread == NULL){
+		printf("UH OH.\n");
+		//segfault
+	}
+	
 	printf("\tthread (tcb*) %x is exiting.\n", currently_running_thread);
 	if(currently_running_thread->joining_thread_ptr){
 		
-		joiner = currently_running_thread->joining_thread_ptr;
-		*((double **)joiner->value_ptr) = (double*)value_ptr;
-		printf("\tthread (tcb *) %x was joined by thread (tcb*) %x.\n", currently_running_thread, joiner);
+		joiner = block->joining_thread_ptr;
+		void* ptr = block->value_ptr;
+		*(double*)ptr = *(double*)value_ptr;
+		printf("\tthread (tcb *) %x was joined by thread (tcb*) %x.\n", block, joiner);
+	}
+	else{
+		block->value_ptr = value_ptr;
+		printf("\tblock->value_ptr = %x", block->value_ptr);
 	}
 	enqueue(&terminated_queue, block);
 
@@ -270,11 +293,33 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	schedule_lock = 1;
 	
 	printf("\nJOIN:\n");
-	//DEBUG
+	printf("currently running thread (tcb*): %x\n", currently_running_thread);
+
+	//check the terminated_queue for the thread we joined. 
+	if(terminated_queue != NULL){
+		
+		tcb_node* queue_ptr = terminated_queue;
+		while(queue_ptr != NULL && queue_ptr->tcb != thread){
+			queue_ptr = queue_ptr->next;
+		}
+		if(queue_ptr == NULL){
+			printf("\tthread (tcb*) %x not in terminated queue.\n", thread);
+		}
+		else if(queue_ptr->tcb == thread){
+			printf("\tfound thread (tcb*): %x in terminated queue\n", currently_running_thread);
+			printf("\tvalue_ptr = %x\tthread_value->ptr = %x\n", value_ptr, thread->value_ptr);
+			*value_ptr = thread->value_ptr; 
+			printf("\tvalue_ptr = %x\t*value_ptr = %x\n", value_ptr, *value_ptr);
+			return;
+		}
+	}
+	
 	
 	thread->joining_thread_ptr = currently_running_thread;
-	thread->value_ptr = value_ptr;
+	thread->value_ptr = *value_ptr;	
+	printf("\tthread->value_ptr = %x\n", thread->value_ptr);
 	printf("\tthread (tcb *) %x joins thread (tcb*) %x.\n", currently_running_thread, thread);
+	
 	tcb* block = currently_running_thread;
 	enqueue(&waiting_queue, block);
 	getcontext(block->context_ptr);

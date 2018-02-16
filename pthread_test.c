@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "my_pthread_t.h"
+#include <time.h>
 
 void* test_func3(){
 	
@@ -16,7 +17,7 @@ void* test_func2(){
 	printf("\n\x1b[36mwe called test_func 2.\x1b[0m\n");
 	int* D = malloc(sizeof(int));
 	*D = 25;
-	printf("\x1b[36mD is %d\x1b[0m\n", *D);
+	printf("\x1b[36m*D = %d\x1b[0m\n", *D);
 	pthread_t thread3;
 	pthread_create(&thread3, NULL, (void*)&test_func3, NULL);
 	
@@ -29,7 +30,8 @@ void* test_func(void* x){
 	printf("\n\x1b[36mwe called test_func.\x1b[0m\n");
 	int* c = (int*)x;
 	*c *=2;
-	printf("\x1b[36mC is %d\x1b[0m\n", *c);
+	printf("\x1b[36m*C = %d\x1b[0m\n", *c);
+	printf("\x1b[36mC = %x\x1b[0m\n", c);
 	
 	pthread_t thread2;
 	//printf("\x1b[36mcreating thread 2.\x1b[0m\n");
@@ -44,23 +46,38 @@ int main(int argc, char** argv){
 	printf("\x1b[36mhello world.\x1b[0m\n");
 	
 	pthread_t thread;
-	int x = 10;
-	int error = pthread_create(&thread, NULL, (void*)&test_func, &x);
+	pthread_t thread2;
+	pthread_t thread3;
+	pthread_t thread4;
+	int* x = malloc(sizeof(int));
+	*x = 10;
+	int error = pthread_create(&thread, NULL, (void*)&test_func, x);
+	//error = pthread_create(&thread2, NULL, (void*)&test_func, x);
+	//error = pthread_create(&thread3, NULL, (void*)&test_func, x);
+	//error = pthread_create(&thread4, NULL, (void*)&test_func, x);
+
 	if (error != 0){
 		printf("\x1b[36mcan't create thread :[%s]\x1b[0m", strerror(error));
 		return;
 	}
 
-	int* ret; 
-	int counter = 0;
-	int math = 0;
-	while(counter < 10000){
-		int math = math + counter * 2;
-		counter++;
-	}
+	int* ret = malloc(sizeof(int));
+	time_t start, curr_time;
+	start = clock();
+	
+	printf("\x1b[36mret's address: %x\x1b[0m\n", &ret);
+	printf("\x1b[36mret: %x\x1b[0m\n", ret);
+	printf("\x1b[36mret's value: %d\x1b[0m\n", *ret);
+	
+	while((curr_time - start)/CLOCKS_PER_SEC <= 1){curr_time = clock();}
+
 	
 	pthread_join(thread, (void**)&ret);
-	printf("\x1b[36mreturn value from the thread is %d\x1b[0m\n", ret);
+	//pthread_join(thread2, (void**)&ret);
+	//pthread_join(thread3, (void**)&ret);
+	//pthread_join(thread4, (void**)&ret);
+	
+	printf("\x1b[36mreturn value from the thread is %d\x1b[0m\n", *ret);
 	pthread_exit(NULL);
 }
 
