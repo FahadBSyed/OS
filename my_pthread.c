@@ -13,20 +13,29 @@
 	QUESTIONS:
 	why does execution pause randomly sometimes? (is this still a problem?)
 	
-	TODO: do not free TCBs, make a terminated queue and use that as a record for return values. (is this done?)
-	TODO: create 3 run queues: short_run, med_run, fifo_run
+	TODO: Create maintenance cycle based on waiting time.
+	TODO: Figure out how to prevent demotion if the thread yielded willingly.
+	TODO: Add benchmark content to readme.txt
+	
 */
+
+
+//Helper function used in scheduler to determine which queue should be ran.
 float random_0_100()
 {	  
       float r = (float)rand() / (float)RAND_MAX;
       return r;
 }
 
+//Helper function used in the scheduler to initialize the signal handler.
 void init_signal_handler(){
 	
 	//seed the scheduler's random number generator
 	srand(time(NULL));
 
+	gettimeofday(&my_pthread_start_time, NULL);
+	printf("start:%d:%d\n",my_pthread_start_time.tv_sec, my_pthread_start_time.tv_usec);
+	
 	sigemptyset(&block_mask);
 	sigaddset(&block_mask, SIGALRM);
 	
@@ -46,7 +55,7 @@ void init_signal_handler(){
 	setitimer (ITIMER_REAL, timer, NULL);
 }
 
-
+//Debug function used in the scheduler to show queues.
 void print_queue(tcb_node** queue, char * str){
 	printf("\t\t%s:\n", str);
 	if(*queue == NULL){
@@ -55,15 +64,14 @@ void print_queue(tcb_node** queue, char * str){
 	else{
 		tcb_node* queue_ptr = *queue;
 		while(queue_ptr != NULL){
-			printf("\t\t\x1b[33mthread (tcb*) %x\x1b[0m\n", queue_ptr->tcb);
+			printf("\t\t\x1b[33mthread (tcb*) %x\twait time:%d:%d\x1b[0m\n", queue_ptr->tcb, queue_ptr->tcb->wait_time.tv_sec, queue_ptr->tcb->wait_time.tv_usec);
 			queue_ptr = queue_ptr->next;
 		}
 	}
 	printf("\n");
 }
 
-//This function takes the address of one of our queues. It then removes the first node in the queue.
-//TODO: possibly clean up and free taken node.
+//This helper function takes the address of one of our queues. It then removes the first node in the queue.
 tcb* dequeue(tcb_node** queue){
 	printf("\n\tDequeue.\n");
 	if(*queue == NULL || (*queue)->tcb == NULL){
@@ -80,12 +88,9 @@ tcb* dequeue(tcb_node** queue){
 	queue_ptr->next = NULL;
 	
 	return queue_ptr->tcb;
-	
-	//printf("\t\x1b[32mdequeued thread (tcb*) %x.\x1b[0m\n", queue_ptr->tcb);
-	//return queue_ptr->tcb;
 }
 
-//This function takes the address of one of our queues and a pointer to a tcb. It then adds the tcb
+//This helper function takes the address of one of our queues and a pointer to a tcb. It then adds the tcb
 //to the end of the queue. If the queue doesn't exist, it allocates it. 
 void enqueue(tcb_node** queue, tcb* block){
 	printf("\n\tEnqueue.\n");
@@ -115,10 +120,10 @@ void enqueue(tcb_node** queue, tcb* block){
 		if(*queue == terminated_queue){print_queue(&terminated_queue, "terminated queue");}
 		if(*queue == waiting_queue){print_queue(&waiting_queue, "wait queue");}
 	}
-	//printf("\t\x1b[32menqueued thread (tcb*) %x.\x1b[0m\n", block);
 
 }
 
+//This helper function runs the queue given by tcb_node** queue and does proper maintenance and state alteration.
 void run_from_queue(tcb_node** queue){
 	
 	schedule_lock = 1;
@@ -126,9 +131,41 @@ void run_from_queue(tcb_node** queue){
 	if(*queue == med_run_queue){printf("RUN: medium run queue\n");}
 	if(*queue == FIFO_run_queue){printf("RUN: FIFO run queue\n");}
 	
+	//update wait times.
+	tcb_node* queue_ptr = short_run_queue;
+	struct timeval elapsed;
+	elapsed.tv_sec = my_pthread_end_time.tv_sec - my_pthread_start_time.tv_sec;
+	elapsed.tv_usec = my_pthread_end_time.tv_usec - my_pthread_start_time.tv_usec;
+	
+	printf("\telapsed: %d:%d\n", elapsed.tv_sec, elapsed.tv_usec);
+	while(queue_ptr != NULL){
+		queue_ptr->tcb->wait_time.tv_sec = elapsed.tv_sec;
+		queue_ptr->tcb->wait_time.tv_usec = elapsed.tv_usec;
+		queue_ptr = queue_ptr->next;
+	}
+	queue_ptr = med_run_queue;
+	while(queue_ptr != NULL){
+		queue_ptr->tcb->wait_time.tv_sec = elapsed.tv_sec;
+		queue_ptr->tcb->wait_time.tv_usec = elapsed.tv_usec;
+		queue_ptr = queue_ptr->next;
+	}
+	queue_ptr = FIFO_run_queue;
+	while(queue_ptr != NULL){
+		queue_ptr->tcb->wait_time.tv_sec = elapsed.tv_sec;
+		queue_ptr->tcb->wait_time.tv_usec = elapsed.tv_usec;
+		queue_ptr = queue_ptr->next;
+	}
+	queue_ptr = waiting_queue;
+	while(queue_ptr != NULL){
+		queue_ptr->tcb->wait_time.tv_sec = elapsed.tv_sec;
+		queue_ptr->tcb->wait_time.tv_usec = elapsed.tv_usec;
+		queue_ptr = queue_ptr->next;
+	}
+	
+	//demote current thread to lower queue.
 	tcb* block = currently_running_thread;
 	if(block != NULL){
-	
+		printf("currently running thread (tcb*) %x.\n", currently_running_thread);
 		printf("\nshift queues for current thread.\n");
 		if(timer->it_interval.tv_usec == 8000){enqueue(&med_run_queue, block);}
 		else if(timer->it_interval.tv_usec == 16000){enqueue(&FIFO_run_queue, block);}		
@@ -156,26 +193,38 @@ void run_from_queue(tcb_node** queue){
 	else if(*queue == FIFO_run_queue){
 		//set timer to FIFO.
 		timer->it_value.tv_usec = 0;
+		timer->it_value.tv_sec = 0;
 		timer->it_interval.tv_usec = 0;
+		timer->it_interval.tv_sec = 0;
 		setitimer (ITIMER_REAL, timer, NULL);
 
 		currently_running_thread = dequeue(&FIFO_run_queue);
 		printf("\trunning thread (tcb*) %x from FIFO.\n", currently_running_thread);	
 	}
-
+	
 	
 	if(block != NULL){ 
+		gettimeofday(&my_pthread_start_time, NULL);
+		gettimeofday(&my_pthread_end_time, NULL);
+		block->wait_time.tv_sec = 0;
+		block->wait_time.tv_usec = 0;
+		currently_running_thread->wait_time.tv_sec = 0;
+		currently_running_thread->wait_time.tv_usec = 0;
 		schedule_lock = 0;
 		swapcontext(block->context_ptr, currently_running_thread->context_ptr); 
 	}
 	else{ 
+		gettimeofday(&my_pthread_start_time, NULL);
+		gettimeofday(&my_pthread_end_time, NULL);
+		currently_running_thread->wait_time.tv_sec = 0;
+		currently_running_thread->wait_time.tv_usec = 0;
 		schedule_lock = 0;
 		setcontext(currently_running_thread->context_ptr); 
 	}
 	return;
 }
 
-/* create a new thread */
+
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
 
 	schedule_lock = 1;
@@ -186,11 +235,8 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	char make_main = 0;
 	if(short_run_queue == NULL && med_run_queue == NULL 
 	   && FIFO_run_queue == NULL && waiting_queue == NULL && currently_running_thread == NULL){
-		
 		make_main = 1;
-
 		init_signal_handler();
-
 	}
 	
 	//Creates a new context pointed to by block.	
@@ -198,6 +244,8 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	block->context_ptr = malloc(sizeof(ucontext_t));
 	*thread = block; 
 	getcontext(block->context_ptr);
+	block->wait_time.tv_sec = 0;
+	block->wait_time.tv_usec = 0;
 	
 	//@DEBUG: Do error handing on getcontext().
 	
@@ -226,13 +274,9 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	return 0; 
 };
 
-/* give CPU pocession to other user level threads voluntarily */
+
 int my_pthread_yield() {
-	
-	//printf("\x1b[32m\ntime's up\x1b[0m\n");
-	//printf("currently running thread (tcb*): %x\n", currently_running_thread);
-	//Fire some sort of signal.
-	//swap currently running context with the first context in the queue. 
+
 	if(schedule_lock == 1){
 		return;
 	}
@@ -242,16 +286,20 @@ int my_pthread_yield() {
 		return 0;
 	}
 	
+	gettimeofday(&my_pthread_end_time, NULL);
 	float random = random_0_100();
 	printf("YIELD:\n\trandom: %f\n", random);
+	printf("\tstart:%d:%d\tend:%d:%d\n", my_pthread_start_time.tv_sec, my_pthread_start_time.tv_usec, my_pthread_end_time, my_pthread_end_time.tv_usec);
 	if(random <= .5){
 		if(short_run_queue != NULL){
 			run_from_queue(&short_run_queue);
 		}
 		else if(med_run_queue != NULL){
+			printf("\tshort queue was empty.\n");
 			run_from_queue(&med_run_queue);
 		}
 		else if(FIFO_run_queue != NULL){
+			printf("\tshort and medium queues were empty.\n");
 			run_from_queue(&FIFO_run_queue);
 		}
 	}
@@ -260,9 +308,11 @@ int my_pthread_yield() {
 			run_from_queue(&med_run_queue);
 		}
 		else if(short_run_queue != NULL){
+			printf("\tmedium queue was empty.\n");
 			run_from_queue(&short_run_queue);
 		}
 		else if(FIFO_run_queue != NULL){
+			printf("\tshort and medium queues were empty.\n");
 			run_from_queue(&FIFO_run_queue);
 		}
 	}
@@ -270,11 +320,13 @@ int my_pthread_yield() {
 		if(FIFO_run_queue != NULL){
 			run_from_queue(&FIFO_run_queue);
 		}
-		else if(med_run_queue != NULL){
-			run_from_queue(&med_run_queue);
-		}
 		else if(short_run_queue != NULL){
+			printf("\tFIFO queue was empty.\n");
 			run_from_queue(&short_run_queue);
+		}
+		else if(med_run_queue != NULL){
+			printf("\tFIFO and medium queues were empty.\n");
+			run_from_queue(&med_run_queue);
 		}
 	}
 	return;
@@ -285,6 +337,18 @@ int my_pthread_yield() {
 void my_pthread_exit(void *value_ptr) {
 	
 	schedule_lock = 1;
+	
+	if(short_run_queue == NULL && med_run_queue == NULL && FIFO_run_queue == NULL 
+	   && waiting_queue == NULL && currently_running_thread == NULL && terminated_queue == NULL
+	   && sa == NULL){
+		init_signal_handler();
+		tcb* main_block = malloc(sizeof(tcb));
+		main_block->context_ptr = malloc(sizeof(ucontext_t));
+		currently_running_thread = main_block;
+		printf("\nMAIN:\trunning main thread (tcb*) %x.\n", main_block);
+		getcontext(main_block->context_ptr);
+	}
+	
 	
 	//reset scheduler timers.
 	timer->it_value.tv_sec = 0;
@@ -303,7 +367,8 @@ void my_pthread_exit(void *value_ptr) {
 	
 	if(block == NULL){
 		printf("ERROR: currently running thread is null.\n");
-		//segfault
+		printf("exiting...\n");
+		exit(1);
 	}
 	
 	printf("\tthread (tcb*) %x is exiting.\n", block);
@@ -336,7 +401,7 @@ void my_pthread_exit(void *value_ptr) {
 			if(waiting_ptr == NULL){
 				printf("Could not find the joiner.\n");
 				printf("exiting...\n");
-				exit(0);
+				exit(1);
 			}
 			
 			printf("\tfound the joiner.\n");
@@ -345,6 +410,7 @@ void my_pthread_exit(void *value_ptr) {
 				tcb* new_block = dequeue(&waiting_queue);
 				enqueue(&short_run_queue, new_block);
 			}
+			//covers all other cases. 
 			else{
 				prev_ptr->next = waiting_ptr->next;
 				tcb* new_block = waiting_ptr->tcb;
@@ -355,7 +421,7 @@ void my_pthread_exit(void *value_ptr) {
 		else{
 			printf("ERROR: the terminating thread was joined, but no waiting queue exists.\n");
 			schedule_lock = 0;
-			return 0;
+			return;
 		}
 	}
 	
@@ -364,8 +430,6 @@ void my_pthread_exit(void *value_ptr) {
 	return;
 };
 
-/* wait for thread termination */
-//TODO: figure out how to retrieve return value correctly.
 int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	
 	schedule_lock = 1;

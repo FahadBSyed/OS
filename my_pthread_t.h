@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ucontext.h>
+#include <time.h>
 
 typedef uint my_pthread_t;
 
@@ -34,8 +35,8 @@ typedef struct threadControlBlock {
 	//stores the return value of a context. 
 	void* value_ptr;
 	
-	//stores the priority of a thread.
-	unsigned int priority; 
+	//stores the wait_time of a thread.
+	struct timeval wait_time; 
 	
 } tcb; 
 
@@ -75,7 +76,9 @@ typedef struct my_pthread_mutex_t {
 struct sigaction* sa;
 sigset_t block_mask;
 struct itimerval* timer;
+
 int schedule_lock;
+struct timeval my_pthread_start_time, my_pthread_end_time;
 
 /* Function Declarations: */
 #define my_pthread_t pthread_t
