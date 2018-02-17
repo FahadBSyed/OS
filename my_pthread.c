@@ -322,7 +322,7 @@ void my_pthread_exit(void *value_ptr) {
 
 	//if there was a thread waiting on us, put it in the short running queue.
 	if(joiner){
-		
+												//Travis use this for unlock!!!!!
 		//find the joiner, remove it from the list. 
 		if(waiting_queue != NULL){
 			
@@ -407,53 +407,82 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 
 /* initial the mutex lock */
 int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) {
-	if(mutex == NULL){
-		return -1;
-	}
 
-	mutex->flag = 0;	
-	return 0;
+	if(mutex == NULL){
+		printf("Error: mutex was not declared\n");
+        	return -1;
+        }
+
+        if(mutex->flag!='\0'){
+		printf("Error: mutex already initualized");
+                return -1;
+        }
+        mutex->flag = '0';
+        
+        return 0;
+
+
+
 };
 
 /* aquire the mutex lock */
 int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
-	if(mutex == NULL) {
+        if(mutex == NULL) {
+               	printf("Error: mutex was not declared\n");
 		return -1;
-		return;
-	}
+        }
+        if(mutex->flag=='\0'){
+		printf("Error: mutex not initualized");	
+                return -1;
+        }
+ 
+        if(!__atomic_test_and_set(&(mutex->flag),__ATOMIC_SEQ_CST)){
+		tcb* block = currently_running_thread;
+                enqueue(&mutex->lock_wait_queue, block);
+		my_pthread_yield();
+        }
 
-	if(mutex->flag == 0) {
-		mutex->flag = 1;
-	}	
-
-	while(__atomic_test_and_set(&(mutex->flag), 1) == 1){
-		return;
-	}
-
-	return 0;
+        return 0;
 };
 
 /* release the mutex lock */
 int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
-	if (mutex==NULL)
-	{
+	if (mutex==NULL){
+               	printf("Error: mutex was not declared\n");
 		return -1;
-	}
-	__sync_synchronize();
-	mutex->flag = 0;
-	
-	return 0;
+        }
+
+        if(mutex->flag == '\0'){
+		printf("Error: mutex not initualized");	 
+                return -1;
+        }
+        __atomic_store_n(&(mutex->flag),'0',__ATOMIC_SEQ_CST);
+	tcb* next_waiting_on_lock = dequeue(&mutex->lock_wait_queue);
+	enqueue(&short_run_queue, next_waiting_on_lock);
+
+
+        return 0;
 };
 
 /* destroy the mutex */
 int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
-	if(mutex == NULL){
-		return -1;
-	}
+        if(mutex == NULL){
+            	printf("Error: mutex was not declared\n");
+	        return -1;
+        }
 
-	if(mutex->flag == 0){
-		free(mutex);
-	}
-	return 0;
+        if(mutex->flag=='\0'){
+                printf("Error: mutex not initualized");	 
+                return-1;
+        }
+
+        if(!__atomic_test_and_set(&(mutex->flag),__ATOMIC_SEQ_CST)){
+             	tcb* block = currently_running_thread;
+                enqueue(&mutex->lock_wait_queue, block);
+		my_pthread_yield();
+        }
+	free(mutex->lock_wait_queue);
+        mutex->flag = '\0';
+        return 0;
 };
 

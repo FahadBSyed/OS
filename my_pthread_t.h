@@ -39,14 +39,6 @@ typedef struct threadControlBlock {
 	
 } tcb; 
 
-/* mutex struct definition */
-typedef struct my_pthread_mutex_t {
-	/* add something here */
-	
-	int flag; 
-} my_pthread_mutex_t;
-
-/* define your data structures here: */
 
 // Feel free to add your own auxiliary data structures
  typedef struct tcb_node{
@@ -54,6 +46,18 @@ typedef struct my_pthread_mutex_t {
 	 tcb* tcb; 
 	 struct tcb_node* next;
  } tcb_node;
+
+
+
+
+/* mutex struct definition */
+typedef struct my_pthread_mutex_t {
+	/* add something here */
+	tcb_node* lock_wait_queue;
+	int flag; 
+} my_pthread_mutex_t;
+
+/* define your data structures here: */
 
 //typedef struct sigaction sigaction;
 //typedef struct itimerval itimerval;
@@ -76,7 +80,7 @@ int schedule_lock;
 /* Function Declarations: */
 #define my_pthread_t pthread_t
 #define pthread_t tcb*
-
+#define pthread_mutex_t my_pthread_mutex_t
 /* create a new thread */
 #define pthread_create(thread,attr,function,arg) my_pthread_create(thread,attr,function,arg)
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg);
@@ -94,7 +98,7 @@ void my_pthread_exit(void *value_ptr);
 int my_pthread_join(my_pthread_t thread, void **value_ptr);
 
 /* initial the mutex lock */
-#define pthread_mutex_init(mutex,mutexattr) my__pthread_mutex_init(mutex,mutexattr)
+#define pthread_mutex_init(mutex,mutexattr) my_pthread_mutex_init(mutex,mutexattr)
 int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr);
 
 /* aquire the mutex lock */
