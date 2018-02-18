@@ -2,22 +2,11 @@
 // Author:	Yujie REN
 // Date:	09/23/2017
 
-// name:
-// username of iLab:
-// iLab Server:
+// name: Fahad Syed, Travis Thiel, Austin Tsai
+// username of iLab: fbs14
+// iLab Server: cd.cs.rutgers.edu
 
 #include "my_pthread_t.h"
-
-
-/*
-	QUESTIONS:
-	why does execution pause randomly sometimes? (is this still a problem?)
-	
-	TODO: Create maintenance cycle based on waiting time.
-	TODO: Figure out how to prevent demotion if the thread yielded willingly.
-	TODO: Add benchmark content to readme.txt
-	
-*/
 
 
 //Helper function used in scheduler to determine which queue should be ran.
