@@ -65,6 +65,10 @@ typedef struct my_pthread_mutex_t {
  
  tcb* currently_running_thread;
  
+ //this thread will call pthread_exit() on other threads that don't call it themselves. 
+ tcb* auto_exiter;
+ tcb* main_block;
+ 
  tcb_node* short_run_queue;
  tcb_node* med_run_queue;
  tcb_node* FIFO_run_queue;
