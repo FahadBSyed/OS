@@ -133,6 +133,7 @@ void run_from_queue(tcb_node** queue){
 	
 	//update wait times.
 	tcb_node* queue_ptr = short_run_queue;
+	tcb_node* prev_ptr = NULL;
 	struct timeval elapsed;
 	elapsed.tv_sec = my_pthread_end_time.tv_sec - my_pthread_start_time.tv_sec;
 	elapsed.tv_usec = my_pthread_end_time.tv_usec - my_pthread_start_time.tv_usec;
@@ -143,17 +144,53 @@ void run_from_queue(tcb_node** queue){
 		queue_ptr->tcb->wait_time.tv_usec = elapsed.tv_usec;
 		queue_ptr = queue_ptr->next;
 	}
+
 	queue_ptr = med_run_queue;
 	while(queue_ptr != NULL){
 		queue_ptr->tcb->wait_time.tv_sec = elapsed.tv_sec;
 		queue_ptr->tcb->wait_time.tv_usec = elapsed.tv_usec;
-		queue_ptr = queue_ptr->next;
+		if(queue_ptr->tcb->wait_time.tv_sec == 1){
+			printf("PROMOTING.\n");
+			if(prev_ptr != NULL){
+				prev_ptr->next = queue_ptr->next;
+				queue_ptr->next = NULL;
+				enqueue(&short_run_queue, queue_ptr->tcb);
+				queue_ptr = prev_ptr->next;
+			}
+			else{
+				tcb* temp_block = dequeue(&med_run_queue);
+				enqueue(&short_run_queue, temp_block);
+				queue_ptr = med_run_queue;
+			}
+		}
+		else{
+			prev_ptr = queue_ptr;
+			queue_ptr = queue_ptr->next;
+		}
 	}
+	
 	queue_ptr = FIFO_run_queue;
 	while(queue_ptr != NULL){
 		queue_ptr->tcb->wait_time.tv_sec = elapsed.tv_sec;
 		queue_ptr->tcb->wait_time.tv_usec = elapsed.tv_usec;
-		queue_ptr = queue_ptr->next;
+		if(queue_ptr->tcb->wait_time.tv_sec == 2){
+			printf("PROMOTING.\n");
+			if(prev_ptr != NULL){
+				prev_ptr->next = queue_ptr->next;
+				queue_ptr->next = NULL;
+				enqueue(&short_run_queue, queue_ptr->tcb);
+				queue_ptr = prev_ptr->next;
+			}
+			else{
+				tcb* temp_block = dequeue(&FIFO_run_queue);
+				enqueue(&short_run_queue, temp_block);
+				queue_ptr = FIFO_run_queue;
+			}
+		}
+		else{
+			prev_ptr = queue_ptr;
+			queue_ptr = queue_ptr->next;
+		}
 	}
 	queue_ptr = waiting_queue;
 	while(queue_ptr != NULL){
@@ -289,7 +326,7 @@ int my_pthread_yield() {
 	gettimeofday(&my_pthread_end_time, NULL);
 	float random = random_0_100();
 	printf("YIELD:\n\trandom: %f\n", random);
-	printf("\tstart:%d:%d\tend:%d:%d\n", my_pthread_start_time.tv_sec, my_pthread_start_time.tv_usec, my_pthread_end_time, my_pthread_end_time.tv_usec);
+	//printf("\tstart:%d:%d\tend:%d:%d\n", my_pthread_start_time.tv_sec, my_pthread_start_time.tv_usec, my_pthread_end_time, my_pthread_end_time.tv_usec);
 	if(random <= .5){
 		if(short_run_queue != NULL){
 			run_from_queue(&short_run_queue);
