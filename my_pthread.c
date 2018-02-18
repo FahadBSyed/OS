@@ -34,7 +34,7 @@ void init_signal_handler(){
 	srand(time(NULL));
 
 	gettimeofday(&my_pthread_start_time, NULL);
-	printf("start:%d:%d\n",my_pthread_start_time.tv_sec, my_pthread_start_time.tv_usec);
+	//printf("start:%d:%d\n",my_pthread_start_time.tv_sec, my_pthread_start_time.tv_usec);
 	
 	sigemptyset(&block_mask);
 	sigaddset(&block_mask, SIGALRM);
@@ -68,21 +68,21 @@ void print_queue(tcb_node** queue, char * str){
 			queue_ptr = queue_ptr->next;
 		}
 	}
-	printf("\n");
+	//printf("\n");
 }
 
 //This helper function takes the address of one of our queues. It then removes the first node in the queue.
 tcb* dequeue(tcb_node** queue){
-	printf("\n\tDequeue.\n");
+	//printf("\n\tDequeue.\n");
 	if(*queue == NULL || (*queue)->tcb == NULL){
 		printf("ERROR: queue or queue's tcb is null.\n");
 		return NULL;
 	}
-	if(*queue == short_run_queue){print_queue(&short_run_queue, "short run queue");}
-	if(*queue == med_run_queue){print_queue(&med_run_queue, "medium run queue");}
-	if(*queue == FIFO_run_queue){print_queue(&FIFO_run_queue, "FIFO run queue");}
-	if(*queue == terminated_queue){print_queue(&terminated_queue, "terminated queue");}
-	if(*queue == waiting_queue){print_queue(&waiting_queue, "wait queue");}
+	//if(*queue == short_run_queue){print_queue(&short_run_queue, "short run queue");}
+	//if(*queue == med_run_queue){print_queue(&med_run_queue, "medium run queue");}
+	//if(*queue == FIFO_run_queue){print_queue(&FIFO_run_queue, "FIFO run queue");}
+	//if(*queue == terminated_queue){print_queue(&terminated_queue, "terminated queue");}
+	//if(*queue == waiting_queue){print_queue(&waiting_queue, "wait queue");}
 	tcb_node* queue_ptr = *queue;
 	*queue = (*queue)->next;
 	queue_ptr->next = NULL;
@@ -93,16 +93,16 @@ tcb* dequeue(tcb_node** queue){
 //This helper function takes the address of one of our queues and a pointer to a tcb. It then adds the tcb
 //to the end of the queue. If the queue doesn't exist, it allocates it. 
 void enqueue(tcb_node** queue, tcb* block){
-	printf("\n\tEnqueue.\n");
+	//printf("\n\tEnqueue.\n");
 	if(*queue == NULL){
 		*queue = malloc(sizeof(tcb_node));
 		(*queue)->tcb = block;
 		(*queue)->next = NULL;
-		if(*queue == short_run_queue){print_queue(&short_run_queue, "short run queue");}
-		if(*queue == med_run_queue){print_queue(&med_run_queue, "medium run queue");}
-		if(*queue == FIFO_run_queue){print_queue(&FIFO_run_queue, "FIFO run queue");}
-		if(*queue == terminated_queue){print_queue(&terminated_queue, "terminated queue");}
-		if(*queue == waiting_queue){print_queue(&waiting_queue, "wait queue");}
+		//if(*queue == short_run_queue){print_queue(&short_run_queue, "short run queue");}
+		//if(*queue == med_run_queue){print_queue(&med_run_queue, "medium run queue");}
+		//if(*queue == FIFO_run_queue){print_queue(&FIFO_run_queue, "FIFO run queue");}
+		//if(*queue == terminated_queue){print_queue(&terminated_queue, "terminated queue");}
+		//if(*queue == waiting_queue){print_queue(&waiting_queue, "wait queue");}
 	}
 	else{
 		//traverse tcb_node queue until node's next is null.
@@ -114,11 +114,11 @@ void enqueue(tcb_node** queue, tcb* block){
 		ptr->next = malloc(sizeof(tcb_node));
 		ptr->next->tcb = block;
 		ptr->next->next = NULL;
-		if(*queue == short_run_queue){print_queue(&short_run_queue, "short run queue");}
-		if(*queue == med_run_queue){print_queue(&med_run_queue, "medium run queue");}
-		if(*queue == FIFO_run_queue){print_queue(&FIFO_run_queue, "FIFO run queue");}
-		if(*queue == terminated_queue){print_queue(&terminated_queue, "terminated queue");}
-		if(*queue == waiting_queue){print_queue(&waiting_queue, "wait queue");}
+		//if(*queue == short_run_queue){print_queue(&short_run_queue, "short run queue");}
+		//if(*queue == med_run_queue){print_queue(&med_run_queue, "medium run queue");}
+		//if(*queue == FIFO_run_queue){print_queue(&FIFO_run_queue, "FIFO run queue");}
+		//if(*queue == terminated_queue){print_queue(&terminated_queue, "terminated queue");}
+		//if(*queue == waiting_queue){print_queue(&waiting_queue, "wait queue");}
 	}
 
 }
@@ -127,9 +127,9 @@ void enqueue(tcb_node** queue, tcb* block){
 void run_from_queue(tcb_node** queue){
 	
 	schedule_lock = 1;
-	if(*queue == short_run_queue){printf("RUN: short run queue\n");}
-	if(*queue == med_run_queue){printf("RUN: medium run queue\n");}
-	if(*queue == FIFO_run_queue){printf("RUN: FIFO run queue\n");}
+	//if(*queue == short_run_queue){printf("RUN: short run queue\n");}
+	//if(*queue == med_run_queue){printf("RUN: medium run queue\n");}
+	//if(*queue == FIFO_run_queue){printf("RUN: FIFO run queue\n");}
 	
 	//update wait times.
 	tcb_node* queue_ptr = short_run_queue;
@@ -138,7 +138,7 @@ void run_from_queue(tcb_node** queue){
 	elapsed.tv_sec = my_pthread_end_time.tv_sec - my_pthread_start_time.tv_sec;
 	elapsed.tv_usec = my_pthread_end_time.tv_usec - my_pthread_start_time.tv_usec;
 	
-	printf("\telapsed: %d:%d\n", elapsed.tv_sec, elapsed.tv_usec);
+	//printf("\telapsed: %d:%d\n", elapsed.tv_sec, elapsed.tv_usec);
 	while(queue_ptr != NULL){
 		queue_ptr->tcb->wait_time.tv_sec = elapsed.tv_sec;
 		queue_ptr->tcb->wait_time.tv_usec = elapsed.tv_usec;
@@ -150,7 +150,7 @@ void run_from_queue(tcb_node** queue){
 		queue_ptr->tcb->wait_time.tv_sec = elapsed.tv_sec;
 		queue_ptr->tcb->wait_time.tv_usec = elapsed.tv_usec;
 		if(queue_ptr->tcb->wait_time.tv_sec == 1){
-			printf("PROMOTING.\n");
+			//printf("PROMOTING.\n");
 			if(prev_ptr != NULL){
 				prev_ptr->next = queue_ptr->next;
 				queue_ptr->next = NULL;
@@ -174,7 +174,7 @@ void run_from_queue(tcb_node** queue){
 		queue_ptr->tcb->wait_time.tv_sec = elapsed.tv_sec;
 		queue_ptr->tcb->wait_time.tv_usec = elapsed.tv_usec;
 		if(queue_ptr->tcb->wait_time.tv_sec == 2){
-			printf("PROMOTING.\n");
+			//printf("PROMOTING.\n");
 			if(prev_ptr != NULL){
 				prev_ptr->next = queue_ptr->next;
 				queue_ptr->next = NULL;
@@ -203,19 +203,19 @@ void run_from_queue(tcb_node** queue){
 	tcb* block = currently_running_thread;
 	if(block != NULL){
 		
-		if(elapsed.tv_sec != 0 && elapsed.tv_usec < it_interval.tv_usec - 1000){
+		if(elapsed.tv_sec != 0 && elapsed.tv_usec < timer->it_interval.tv_usec - 1000){
 			
 			//do not demote.
-			printf("currently running thread (tcb*) %x.\n", currently_running_thread);
-			printf("\nshift queues for current thread.\n");
+			//printf("currently running thread (tcb*) %x.\n", currently_running_thread);
+			//printf("\nshift queues for current thread.\n");
 			if(timer->it_interval.tv_usec == 8000){enqueue(&short_run_queue, block);}
 			else if(timer->it_interval.tv_usec == 16000){enqueue(&med_run_queue, block);}
 		}
 		else{
 			
 			//demote.
-			printf("currently running thread (tcb*) %x.\n", currently_running_thread);
-			printf("\nshift queues for current thread.\n");
+			//printf("currently running thread (tcb*) %x.\n", currently_running_thread);
+			//printf("\nshift queues for current thread.\n");
 			if(timer->it_interval.tv_usec == 8000){enqueue(&med_run_queue, block);}
 			else if(timer->it_interval.tv_usec == 16000){enqueue(&FIFO_run_queue, block);}				
 		}
@@ -228,7 +228,7 @@ void run_from_queue(tcb_node** queue){
 		setitimer (ITIMER_REAL, timer, NULL);
 		
 		currently_running_thread = dequeue(&short_run_queue);
-		printf("\trunning thread (tcb*) %x from short.\n", currently_running_thread);	
+		//printf("\trunning thread (tcb*) %x from short.\n", currently_running_thread);	
 
 	}
 	else if(*queue == med_run_queue){
@@ -238,7 +238,7 @@ void run_from_queue(tcb_node** queue){
 		setitimer (ITIMER_REAL, timer, NULL);	
 
 		currently_running_thread = dequeue(&med_run_queue);
-		printf("\trunning thread (tcb*) %x from med.\n", currently_running_thread);	
+		//printf("\trunning thread (tcb*) %x from med.\n", currently_running_thread);	
 	}
 	else if(*queue == FIFO_run_queue){
 		//set timer to FIFO.
@@ -249,7 +249,7 @@ void run_from_queue(tcb_node** queue){
 		setitimer (ITIMER_REAL, timer, NULL);
 
 		currently_running_thread = dequeue(&FIFO_run_queue);
-		printf("\trunning thread (tcb*) %x from FIFO.\n", currently_running_thread);	
+		//printf("\trunning thread (tcb*) %x from FIFO.\n", currently_running_thread);	
 	}
 	
 	
@@ -278,7 +278,7 @@ void run_from_queue(tcb_node** queue){
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
 
 	schedule_lock = 1;
-	printf("\nCREATE:\n");	
+	//printf("\nCREATE:\n");	
 	
 	//create the main context if all of our data structures are unallocated. 
 	//The main context is the thread that represents main()
@@ -309,7 +309,7 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	
 	//@DEBUG: Do error handing on makecontext().
 	enqueue(&short_run_queue, block);
-	printf("\tadded thread (tcb*) %x to running queue.\n", block);
+	//printf("\tadded thread (tcb*) %x to running queue.\n", block);
 	
 	//Make the context at the end so we don't redo the creation of the thread.
 	if(make_main){
@@ -317,7 +317,7 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 		tcb* main_block = malloc(sizeof(tcb));
 		main_block->context_ptr = malloc(sizeof(ucontext_t));
 		currently_running_thread = main_block;
-		printf("\nMAIN:\trunning main thread (tcb*) %x.\n", main_block);
+		//printf("\nMAIN:\trunning main thread (tcb*) %x.\n", main_block);
 		getcontext(main_block->context_ptr);
 	}
 	schedule_lock = 0;
@@ -338,18 +338,18 @@ int my_pthread_yield() {
 	
 	gettimeofday(&my_pthread_end_time, NULL);
 	float random = random_0_100();
-	printf("YIELD:\n\trandom: %f\n", random);
+	//printf("YIELD:\n\trandom: %f\n", random);
 	//printf("\tstart:%d:%d\tend:%d:%d\n", my_pthread_start_time.tv_sec, my_pthread_start_time.tv_usec, my_pthread_end_time, my_pthread_end_time.tv_usec);
 	if(random <= .5){
 		if(short_run_queue != NULL){
 			run_from_queue(&short_run_queue);
 		}
 		else if(med_run_queue != NULL){
-			printf("\tshort queue was empty.\n");
+			//printf("\tshort queue was empty.\n");
 			run_from_queue(&med_run_queue);
 		}
 		else if(FIFO_run_queue != NULL){
-			printf("\tshort and medium queues were empty.\n");
+			//printf("\tshort and medium queues were empty.\n");
 			run_from_queue(&FIFO_run_queue);
 		}
 	}
@@ -358,11 +358,11 @@ int my_pthread_yield() {
 			run_from_queue(&med_run_queue);
 		}
 		else if(short_run_queue != NULL){
-			printf("\tmedium queue was empty.\n");
+			//printf("\tmedium queue was empty.\n");
 			run_from_queue(&short_run_queue);
 		}
 		else if(FIFO_run_queue != NULL){
-			printf("\tshort and medium queues were empty.\n");
+			//printf("\tshort and medium queues were empty.\n");
 			run_from_queue(&FIFO_run_queue);
 		}
 	}
@@ -371,11 +371,11 @@ int my_pthread_yield() {
 			run_from_queue(&FIFO_run_queue);
 		}
 		else if(short_run_queue != NULL){
-			printf("\tFIFO queue was empty.\n");
+			//printf("\tFIFO queue was empty.\n");
 			run_from_queue(&short_run_queue);
 		}
 		else if(med_run_queue != NULL){
-			printf("\tFIFO and medium queues were empty.\n");
+			//printf("\tFIFO and medium queues were empty.\n");
 			run_from_queue(&med_run_queue);
 		}
 	}
@@ -395,7 +395,7 @@ void my_pthread_exit(void *value_ptr) {
 		tcb* main_block = malloc(sizeof(tcb));
 		main_block->context_ptr = malloc(sizeof(ucontext_t));
 		currently_running_thread = main_block;
-		printf("\nMAIN:\trunning main thread (tcb*) %x.\n", main_block);
+		//printf("\nMAIN:\trunning main thread (tcb*) %x.\n", main_block);
 		getcontext(main_block->context_ptr);
 	}
 	
@@ -408,8 +408,8 @@ void my_pthread_exit(void *value_ptr) {
 	setitimer (ITIMER_REAL, timer, NULL);
 	
 	
-	printf("\nEXIT:\n");
-	printf("currently running thread (tcb*): %x\n", currently_running_thread);
+	//printf("\nEXIT:\n");
+	//printf("currently running thread (tcb*): %x\n", currently_running_thread);
 
 	//move the currently_running_thread to block and put block on terminated queue
 	tcb* block = currently_running_thread;
@@ -421,13 +421,13 @@ void my_pthread_exit(void *value_ptr) {
 		exit(1);
 	}
 	
-	printf("\tthread (tcb*) %x is exiting.\n", block);
+	//printf("\tthread (tcb*) %x is exiting.\n", block);
 	if(block->joining_thread_ptr){
 		
 		joiner = block->joining_thread_ptr;
 		void* ptr = block->value_ptr;
 		*(double*)ptr = *(double*)value_ptr;
-		printf("\tthread (tcb *) %x was joined by thread (tcb*) %x.\n", block, joiner);
+		//printf("\tthread (tcb *) %x was joined by thread (tcb*) %x.\n", block, joiner);
 	}
 	else{
 		block->value_ptr = value_ptr;
@@ -449,12 +449,12 @@ void my_pthread_exit(void *value_ptr) {
 				waiting_ptr = waiting_ptr->next;
 			}
 			if(waiting_ptr == NULL){
-				printf("Could not find the joiner.\n");
+				printf("ERROR: Could not find the joiner.\n");
 				printf("exiting...\n");
 				exit(1);
 			}
 			
-			printf("\tfound the joiner.\n");
+			//printf("\tfound the joiner.\n");
 			//covers case where joiner is at the top of the list.
 			if(prev_ptr == NULL){
 				tcb* new_block = dequeue(&waiting_queue);
@@ -484,8 +484,8 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	
 	schedule_lock = 1;
 	
-	printf("\nJOIN:\n");
-	printf("currently running thread (tcb*): %x\n", currently_running_thread);
+	//printf("\nJOIN:\n");
+	//printf("currently running thread (tcb*): %x\n", currently_running_thread);
 
 	//check the terminated_queue for the thread we joined. 
 	if(terminated_queue != NULL){
@@ -495,10 +495,10 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 			queue_ptr = queue_ptr->next;
 		}
 		if(queue_ptr == NULL){
-			printf("\tthread (tcb*) %x not in terminated queue.\n", thread);
+			//printf("\tthread (tcb*) %x not in terminated queue.\n", thread);
 		}
 		else if(queue_ptr->tcb == thread){
-			printf("\tfound thread (tcb*): %x in terminated queue\n", currently_running_thread);
+			//printf("\tfound thread (tcb*): %x in terminated queue\n", currently_running_thread);
 			*value_ptr = thread->value_ptr; 
 			return;
 		}
@@ -507,7 +507,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	
 	thread->joining_thread_ptr = currently_running_thread;
 	thread->value_ptr = *value_ptr;	
-	printf("\tthread (tcb *) %x joins thread (tcb*) %x.\n", currently_running_thread, thread);
+	//printf("\tthread (tcb *) %x joins thread (tcb*) %x.\n", currently_running_thread, thread);
 	
 	tcb* block = currently_running_thread;
 	enqueue(&waiting_queue, block);
