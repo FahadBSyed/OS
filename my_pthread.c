@@ -202,10 +202,23 @@ void run_from_queue(tcb_node** queue){
 	//demote current thread to lower queue.
 	tcb* block = currently_running_thread;
 	if(block != NULL){
-		printf("currently running thread (tcb*) %x.\n", currently_running_thread);
-		printf("\nshift queues for current thread.\n");
-		if(timer->it_interval.tv_usec == 8000){enqueue(&med_run_queue, block);}
-		else if(timer->it_interval.tv_usec == 16000){enqueue(&FIFO_run_queue, block);}		
+		
+		if(elapsed.tv_sec != 0 && elapsed.tv_usec < it_interval.tv_usec - 1000){
+			
+			//do not demote.
+			printf("currently running thread (tcb*) %x.\n", currently_running_thread);
+			printf("\nshift queues for current thread.\n");
+			if(timer->it_interval.tv_usec == 8000){enqueue(&short_run_queue, block);}
+			else if(timer->it_interval.tv_usec == 16000){enqueue(&med_run_queue, block);}
+		}
+		else{
+			
+			//demote.
+			printf("currently running thread (tcb*) %x.\n", currently_running_thread);
+			printf("\nshift queues for current thread.\n");
+			if(timer->it_interval.tv_usec == 8000){enqueue(&med_run_queue, block);}
+			else if(timer->it_interval.tv_usec == 16000){enqueue(&FIFO_run_queue, block);}				
+		}
 	}
 	
 	if(*queue == short_run_queue){
