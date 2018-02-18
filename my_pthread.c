@@ -411,14 +411,14 @@ void my_pthread_exit(void *value_ptr) {
 	}
 	
 	//printf("\tthread (tcb*) %x is exiting.\n", block);
-	if(block->joining_thread_ptr){
+	if(block->joining_thread_ptr && value_ptr != NULL){
 		
 		joiner = block->joining_thread_ptr;
 		void* ptr = block->value_ptr;
 		*(double*)ptr = *(double*)value_ptr;
 		//printf("\tthread (tcb *) %x was joined by thread (tcb*) %x.\n", block, joiner);
 	}
-	else{
+	else if(value_ptr != NULL){
 		block->value_ptr = value_ptr;
 	}
 	enqueue(&terminated_queue, block);
@@ -476,9 +476,16 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	//printf("\nJOIN:\n");
 	//printf("currently running thread (tcb*): %x\n", currently_running_thread);
 
+	if(thread == NULL){
+		printf("ERROR: thread to join is null.\n");
+		return;
+	}
+	
+	//printf("thread param: %x\n", thread);
 	//check the terminated_queue for the thread we joined. 
 	if(terminated_queue != NULL){
 		
+		//printf("terminated queue != NULL");
 		tcb_node* queue_ptr = terminated_queue;
 		while(queue_ptr != NULL && queue_ptr->tcb != thread){
 			queue_ptr = queue_ptr->next;
@@ -488,14 +495,19 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 		}
 		else if(queue_ptr->tcb == thread){
 			//printf("\tfound thread (tcb*): %x in terminated queue\n", currently_running_thread);
-			*value_ptr = thread->value_ptr; 
+			if(value_ptr != NULL){
+				*value_ptr = thread->value_ptr; 
+			}
 			return;
 		}
 	}
 	
-	
+	//printf("thread->value_ptr: %x\n", thread->value_ptr);
 	thread->joining_thread_ptr = currently_running_thread;
-	thread->value_ptr = *value_ptr;	
+	
+	if(value_ptr != NULL){
+		thread->value_ptr = *value_ptr;
+	}
 	//printf("\tthread (tcb *) %x joins thread (tcb*) %x.\n", currently_running_thread, thread);
 	
 	tcb* block = currently_running_thread;
@@ -531,11 +543,11 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 /* aquire the mutex lock */
 int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
         if(mutex == NULL) {
-               	printf("Error: mutex was not declared\n");
+           printf("Error: mutex was not declared\n");
 		return -1;
         }
         if(mutex->flag=='\0'){
-		printf("Error: mutex not initualized");	
+			printf("Error: mutex not initualized");	
                 return -1;
         }
  
@@ -551,7 +563,7 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 /* release the mutex lock */
 int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 	if (mutex==NULL){
-               	printf("Error: mutex was not declared\n");
+        printf("Error: mutex was not declared\n");
 		return -1;
         }
 
