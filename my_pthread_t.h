@@ -38,6 +38,9 @@ typedef struct threadControlBlock {
 	//stores the wait_time of a thread.
 	struct timeval wait_time; 
 	
+	//thread id number for debug purposes.
+	unsigned int id;
+	
 } tcb; 
 
 
@@ -64,6 +67,8 @@ typedef struct my_pthread_mutex_t {
 //typedef struct itimerval itimerval;
  
  tcb* currently_running_thread;
+ 
+ unsigned int current_id;
  
  //this thread will call pthread_exit() on other threads that don't call it themselves. 
  tcb* auto_exiter;
