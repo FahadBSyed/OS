@@ -19,6 +19,7 @@
 #include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <ucontext.h>
 #include <time.h>
 
@@ -58,7 +59,8 @@ typedef struct threadControlBlock {
 typedef struct my_pthread_mutex_t {
 	/* add something here */
 	tcb_node* lock_wait_queue;
-	char flag; 
+	bool flag;
+	bool init; 
 } my_pthread_mutex_t;
 
 /* define your data structures here: */
