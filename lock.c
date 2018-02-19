@@ -13,12 +13,15 @@ void* add100(){
 
 
         int l;
+	int u;
+	printf("Lock flag before: %c\n",lock.flag);
         l = pthread_mutex_lock(&lock);
-//      printf("\n\x1b[36mwe called add100. lock: %d\x1b[0m\n",l);
+        printf("\n\x1b[36mwe called add100. lock: %d\x1b[0m\n",l);
 
         balance = balance + 100;
-        //printf("\n\x1b[36mBalance: %d  mutex: %c.\x1b[0m\n",balance,lock->flag);
-        pthread_mutex_unlock(&lock);
+        printf("\n\x1b[36mBalance: %d  mutex: %c.     NULL: \0 \x1b[0m\n",balance,lock.flag);
+        u = pthread_mutex_unlock(&lock);
+	printf("\n\x1b[36munlock: %d  mutex: %c.\x1b[0m\n",u,lock.flag);
         pthread_exit(NULL);
 }
 
@@ -59,7 +62,7 @@ int main(int argc, char** argv){
 	pthread_t tid[a];
         int i = 0;
         while(i<a){
-                pthread_create(&tid[i], NULL, (void*)&add100, NULL);
+                pthread_create(&tid[i], NULL, add100, NULL);
                 i++;
         }
 
@@ -67,14 +70,14 @@ int main(int argc, char** argv){
 	int* ret;
         int counter = 0;
         int math = 0;
-        while(counter < 10000){
+        while(counter < 90000){
                 int math = math + counter * 2;
                 counter++;
         }
 	
 	int c =0;
         while(c<a){
-                printf("%d\n",c);
+                printf(" Join: %d\n",c);
                 pthread_join(tid[c],NULL);
                 c++;
         }

@@ -51,18 +51,18 @@ void init_signal_handler(){
 
 //Debug function used in the scheduler to show queues.
 void print_queue(tcb_node** queue, char * str){
-	//printf("\t\t%s:\n", str);
+	printf("\t\t%s:\n", str);
 	if(*queue == NULL){
-		//printf("\t\t\x1b[33m queue is null.\x1b[0m\n");
+		printf("\t\t\x1b[33m queue is null.\x1b[0m\n");
 	}
 	else{
 		tcb_node* queue_ptr = *queue;
 		while(queue_ptr != NULL){
-			//printf("\t\t\x1b[33mthread (tcb*) %x\tID: %d\twait time:%d:%d\x1b[0m\n", queue_ptr->tcb, queue_ptr->tcb->id, queue_ptr->tcb->wait_time.tv_sec, queue_ptr->tcb->wait_time.tv_usec);
+			printf("\t\t\x1b[33mthread (tcb*) %x\tID: %d\twait time:%d:%d\x1b[0m\n", queue_ptr->tcb, queue_ptr->tcb->id, queue_ptr->tcb->wait_time.tv_sec, queue_ptr->tcb->wait_time.tv_usec);
 			queue_ptr = queue_ptr->next;
 		}
 	}
-	//printf("\n");
+	printf("\n");
 }
 
 //This helper function takes the address of one of our queues. It then removes the first node in the queue.
@@ -232,7 +232,7 @@ void run_from_queue(tcb_node** queue){
 		setitimer (ITIMER_REAL, timer, NULL);
 		
 		currently_running_thread = dequeue(&short_run_queue);
-		//printf("\t\trunning thread (tcb*) %x thread %d from short.\n", currently_running_thread, currently_running_thread->id);	
+		printf("\t\trunning thread (tcb*) %x thread %d from short.\n", currently_running_thread, currently_running_thread->id);	
 
 	}
 	else if(*queue == med_run_queue && med_run_queue != NULL){
@@ -400,7 +400,7 @@ int my_pthread_yield() {
 
 
 	if(schedule_lock == 1){
-		return 0;
+		return -1;
 	}
 	
 	//printf("YIELD:\n");
@@ -624,7 +624,7 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
         }
 
         if(mutex->flag!='\0'){
-		printf("ERROR: mutex already initualized");
+		printf("ERROR: mutex already initualized\n");
                 return -1;
         }
         mutex->flag = '0';
@@ -642,16 +642,24 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 		return -1;
         }
         if(mutex->flag=='\0'){
-			printf("ERROR: mutex not initualized");	
+			printf("ERROR: mutex not initualized\n");	
                 return -1;
         }
- 
+
+	int i=-1;
+ 	printf("										BEFORE LOCK ON: %d\n",currently_running_thread->id);
         if(!__atomic_test_and_set(&(mutex->flag),__ATOMIC_SEQ_CST)){
+		printf("										COULD NOT LOCK ON: %d\n",currently_running_thread->id);
+ 
 		tcb* block = currently_running_thread;
                 enqueue(&mutex->lock_wait_queue, block);
-		my_pthread_yield();
+//		print_queue(&mutex->lock_wait_queue,"\n\nLOCK WAIT QUEUE\n\n");
+		
+		i = my_pthread_yield();
+		printf("%d\n",i);
         }
-
+	printf("										LOCK ACCQUIRED ON: %d\n",currently_running_thread->id);
+ 
         return 0;
 };
 
@@ -663,14 +671,17 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
         }
 
         if(mutex->flag == '\0'){
-		printf("ERROR: mutex not initualized");	 
+		printf("ERROR: mutex not initualized\n");	 
                 return -1;
         }
+	printf("										BEFORE UNLOCK ON: %d\n",currently_running_thread->id);
+ 
         __atomic_store_n(&(mutex->flag),'0',__ATOMIC_SEQ_CST);
 	tcb* next_waiting_on_lock = dequeue(&mutex->lock_wait_queue);
 	enqueue(&short_run_queue, next_waiting_on_lock);
-
-
+//	print_queue(&mutex->lock_wait_queue,"\n\nLOCK WAIT QUEUE\n\n");
+	printf("										UNLOCKED ON: %d\n",currently_running_thread->id);
+ 
         return 0;
 };
 
@@ -685,14 +696,18 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
                 printf("ERROR: mutex not initualized");	 
                 return-1;
         }
-
-        if(!__atomic_test_and_set(&(mutex->flag),__ATOMIC_SEQ_CST)){
+	printf("										BEFORE DESTROY\n");
+ 
+        while(!__atomic_test_and_set(&(mutex->flag),__ATOMIC_SEQ_CST)){
+		printf("										WAITING TO DESTROY\n");
+ 
              	tcb* block = currently_running_thread;
                 enqueue(&mutex->lock_wait_queue, block);
 		my_pthread_yield();
         }
-	free(mutex->lock_wait_queue);
         mutex->flag = '\0';
+	printf("										LOCK DESTROYED\n");
+ 
         return 0;
 };
 
