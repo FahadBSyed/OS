@@ -35,3 +35,11 @@ test_func2 and main purposefully take to complete in order to test thread demoti
 Debug Output:
 The functions within the scheduling library contain lines of debug output for testing and benchmarking that are currently 
 commented out. We found these output lines useful to debugging as gdb didn't play nicely with multi-threaded environments.
+
+Benchmarks:
+Here are our benchmarks from running parallelCal 6:
+
+running time: 2092 micro-seconds
+sum is: 83842816
+verified sum is: 83842816
+
