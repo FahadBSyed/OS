@@ -232,7 +232,7 @@ void run_from_queue(tcb_node** queue){
 		setitimer (ITIMER_REAL, timer, NULL);
 		
 		currently_running_thread = dequeue(&short_run_queue);
-		printf("\t\trunning thread (tcb*) %x thread %d from short.\n", currently_running_thread, currently_running_thread->id);	
+		//printf("\t\trunning thread (tcb*) %x thread %d from short.\n", currently_running_thread, currently_running_thread->id);	
 
 	}
 	else if(*queue == med_run_queue && med_run_queue != NULL){
