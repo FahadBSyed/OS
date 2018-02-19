@@ -221,7 +221,7 @@ void run_from_queue(tcb_node** queue){
 		}
 	}
 	
-	if(*queue == short_run_queue){
+	if(*queue == short_run_queue && short_run_queue != NULL){
 		//set timer to short.
 		timer->it_value.tv_usec = 8000;
 		timer->it_interval.tv_usec = 8000;
@@ -231,7 +231,7 @@ void run_from_queue(tcb_node** queue){
 		printf("\t\trunning thread (tcb*) %x from short.\n", currently_running_thread);	
 
 	}
-	else if(*queue == med_run_queue){
+	else if(*queue == med_run_queue && med_run_queue != NULL){
 		//set timer to medium.
 		timer->it_value.tv_usec = 16000;
 		timer->it_interval.tv_usec = 16000;
@@ -240,7 +240,36 @@ void run_from_queue(tcb_node** queue){
 		currently_running_thread = dequeue(&med_run_queue);
 		printf("\t\trunning thread (tcb*) %x from med.\n", currently_running_thread);	
 	}
-	else if(*queue == FIFO_run_queue){
+	else if(*queue == FIFO_run_queue && FIFO_run_queue != NULL){
+		//set timer to FIFO.
+		timer->it_value.tv_usec = 0;
+		timer->it_value.tv_sec = 0;
+		timer->it_interval.tv_usec = 0;
+		timer->it_interval.tv_sec = 0;
+		setitimer (ITIMER_REAL, timer, NULL);
+
+		currently_running_thread = dequeue(&FIFO_run_queue);
+		printf("\t\trunning thread (tcb*) %x from FIFO.\n", currently_running_thread);	
+	}
+	else if(*queue != short_run_queue && short_run_queue != NULL){
+		//set timer to short.
+		timer->it_value.tv_usec = 8000;
+		timer->it_interval.tv_usec = 8000;
+		setitimer (ITIMER_REAL, timer, NULL);
+		
+		currently_running_thread = dequeue(&short_run_queue);
+		printf("\t\trunning thread (tcb*) %x from short.\n", currently_running_thread);		
+	}
+	else if(*queue != med_run_queue && med_run_queue != NULL){
+		//set timer to medium.
+		timer->it_value.tv_usec = 16000;
+		timer->it_interval.tv_usec = 16000;
+		setitimer (ITIMER_REAL, timer, NULL);	
+
+		currently_running_thread = dequeue(&med_run_queue);
+		printf("\t\trunning thread (tcb*) %x from med.\n", currently_running_thread);	
+	}
+	else if(*queue != FIFO_run_queue && FIFO_run_queue != NULL){
 		//set timer to FIFO.
 		timer->it_value.tv_usec = 0;
 		timer->it_value.tv_sec = 0;
@@ -281,10 +310,21 @@ void auto_exit(int args){
 	schedule_lock = 1;
 	printf("AUTO EXIT:\n");
 	printf("\tcurrently_running_thread: %x\n", currently_running_thread);
-	printf("\tcurrently_running_thread->joining_thread_ptr: %x\n", currently_running_thread->joining_thread_ptr);
-	printf("\tcurrently_running_thread->value_ptr: %x\n", currently_running_thread->value_ptr);
-	printf("\tcurrently_running_thread: %x\n");
-	my_pthread_exit(NULL);
+	if(currently_running_thread != NULL){
+		printf("\tcurrently_running_thread->joining_thread_ptr: %x\n", currently_running_thread->joining_thread_ptr);
+		printf("\tcurrently_running_thread->value_ptr: %x\n", currently_running_thread->value_ptr);
+		printf("\tcurrently_running_thread: %x\n");
+		my_pthread_exit(NULL);
+	}
+	else{
+		print_queue(&short_run_queue, "short run queue");
+		print_queue(&med_run_queue, "medium run queue");
+		print_queue(&FIFO_run_queue, "FIFO run queue");
+		print_queue(&terminated_queue, "terminated queue");
+		print_queue(&waiting_queue, "wait queue");
+	}
+	schedule_lock = 0;
+	return;
 }
 
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
@@ -362,7 +402,7 @@ int my_pthread_yield() {
 	}
 	
 	if(short_run_queue == NULL && med_run_queue == NULL && FIFO_run_queue == NULL){
-		//printf("all run queues were empty.\n");
+		printf("all run queues were empty.\n");
 		return 0;
 	}
 	
