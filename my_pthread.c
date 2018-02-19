@@ -647,18 +647,18 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
         }
 
 	int i=-1;
- 	printf("										BEFORE LOCK ON: %d\n",currently_running_thread->id);
+ //	printf("										BEFORE LOCK ON: %d\n",currently_running_thread->id);
         if(!__atomic_test_and_set(&(mutex->flag),__ATOMIC_SEQ_CST)){
-		printf("										COULD NOT LOCK ON: %d\n",currently_running_thread->id);
+//		printf("										COULD NOT LOCK ON: %d\n",currently_running_thread->id);
  
 		tcb* block = currently_running_thread;
                 enqueue(&mutex->lock_wait_queue, block);
 //		print_queue(&mutex->lock_wait_queue,"\n\nLOCK WAIT QUEUE\n\n");
-		
+		schedule_lock = 0;	
 		i = my_pthread_yield();
-		printf("%d\n",i);
+//		printf("%d\n",i);
         }
-	printf("										LOCK ACCQUIRED ON: %d\n",currently_running_thread->id);
+//	printf("										LOCK ACCQUIRED ON: %d\n",currently_running_thread->id);
  
         return 0;
 };
@@ -674,13 +674,13 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 		printf("ERROR: mutex not initualized\n");	 
                 return -1;
         }
-	printf("										BEFORE UNLOCK ON: %d\n",currently_running_thread->id);
+//	printf("										BEFORE UNLOCK ON: %d\n",currently_running_thread->id);
  
         __atomic_store_n(&(mutex->flag),'0',__ATOMIC_SEQ_CST);
 	tcb* next_waiting_on_lock = dequeue(&mutex->lock_wait_queue);
-	enqueue(&short_run_queue, next_waiting_on_lock);
+	//enqueue(&short_run_queue, next_waiting_on_lock);
 //	print_queue(&mutex->lock_wait_queue,"\n\nLOCK WAIT QUEUE\n\n");
-	printf("										UNLOCKED ON: %d\n",currently_running_thread->id);
+//	printf("										UNLOCKED ON: %d\n",currently_running_thread->id);
  
         return 0;
 };
@@ -696,17 +696,17 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
                 printf("ERROR: mutex not initualized");	 
                 return-1;
         }
-	printf("										BEFORE DESTROY\n");
+//	printf("										BEFORE DESTROY\n");
  
         while(!__atomic_test_and_set(&(mutex->flag),__ATOMIC_SEQ_CST)){
-		printf("										WAITING TO DESTROY\n");
+//		printf("										WAITING TO DESTROY\n");
  
              	tcb* block = currently_running_thread;
                 enqueue(&mutex->lock_wait_queue, block);
 		my_pthread_yield();
         }
         mutex->flag = '\0';
-	printf("										LOCK DESTROYED\n");
+//	printf("										LOCK DESTROYED\n");
  
         return 0;
 };
