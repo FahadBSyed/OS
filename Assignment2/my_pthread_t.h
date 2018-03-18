@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <ucontext.h>
 #include <time.h>
+#include "my_malloc.h"
 
 typedef uint my_pthread_t;
 
@@ -84,9 +85,9 @@ typedef struct my_pthread_mutex_t {
  tcb_node* waiting_queue;
  tcb_node* terminated_queue;
  
-struct sigaction* sa;
+struct sigaction sa;
 sigset_t block_mask;
-struct itimerval* timer;
+struct itimerval timer;
 
 int schedule_lock;
 struct timeval my_pthread_start_time, my_pthread_end_time;
@@ -94,6 +95,7 @@ struct timeval my_pthread_start_time, my_pthread_end_time;
 /* Function Declarations: */
 #define my_pthread_t pthread_t
 #define pthread_t tcb*
+
 #define pthread_mutex_t my_pthread_mutex_t
 /* create a new thread */
 #define pthread_create(thread,attr,function,arg) my_pthread_create(thread,attr,function,arg)
