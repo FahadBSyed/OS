@@ -251,15 +251,13 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 		nextmetapos += sizeof(meta) + meta.size;
 		while(nextmetapos >= (next_page) * page_size){
 			//check if the next page is owned by us. If not, call page_swap. 
-			if(table[next_page].thread == target && table[next_page].alloc == 1){
-				printf("we own this page.\n");
+			if(table[next_page].thread == target && table[next_page].alloc == 1){//we own this page
 				vaddr++;
 				page++;
 				next_page++;
 				printf("next meta: %d\n", nextmetapos);
 			}
-			else if(table[next_page].thread != target && table[next_page].alloc == 1){
-				printf("we do not own this page.\n");
+			else if(table[next_page].thread != target && table[next_page].alloc == 1){//we do not own this page.
 				
 				if(req == 0 && table[next_page].thread != NULL && table[next_page].alloc == 1){ //our scheduler is out of my_memory.
 					return NULL;
@@ -282,7 +280,6 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 				exit(1);
 			}
 		}
-		printf("before copy: meta: %d size: %d alloc: %d\n", nextmetapos, meta.size, meta.alloc);
 		memcpy(&meta, (my_memory+nextmetapos), sizeof(meta));
 		printf("meta: %d size: %d alloc: %d\n", nextmetapos, meta.size, meta.alloc);
 		if(meta.alloc != 1 && meta.alloc != 0){
@@ -309,7 +306,7 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 	while(nextmetapos+sizeof(meta)+meta.size > next_page * page_size){
 		
 		vaddr++;
-		if(table[next_page].thread != target && table[next_page].alloc == 1){
+		if(table[next_page].thread != target && table[next_page].alloc == 1){//we do not own this page.
 			
 			if(req == 0 && table[next_page].thread != NULL && table[next_page].alloc == 1){ //our scheduler is out of my_memory.
 				return NULL;
@@ -328,10 +325,10 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 				next_page++;
 			}
 		}
-		else if(table[next_page].thread == target && table[next_page].alloc == 1){
+		else if(table[next_page].thread == target && table[next_page].alloc == 1){//we own this page.
 			page++; next_page++;
 		}
-		else if(table[next_page].thread == NULL && table[next_page].alloc == 0){
+		else if(table[next_page].thread == NULL && table[next_page].alloc == 0){//this page was not allocated, let's claim it.
 			if(req == THREADREQ){ table[next_page].thread = target; }
 			else{ table[next_page].thread = NULL; }
 			table[next_page].alloc = 1; table[next_page].vaddr = vaddr;
@@ -353,12 +350,13 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 		segdata nextmeta; memset(&nextmeta, 0, sizeof(nextmeta));
 		nextmeta.size = oldsize - (meta.size + sizeof(meta));
 		nextmetapos = nextmetapos + sizeof(meta) + meta.size;
-		
+
+		//before we copy over the nextmetadata, we need to make sure that its page is loaded in. 
 		if(nextmetapos+sizeof(meta) > next_page * page_size){
 			printf("next metadata broke page boundary: %d\n", nextmetapos+sizeof(meta) - (next_page * page_size));
 			vaddr++;
 
-			if(table[next_page].thread != target && table[next_page].alloc == 1){
+			if(table[next_page].thread != target && table[next_page].alloc == 1){ //someone else owns that page. 
 				
 				if(req == 0 && table[next_page].thread != NULL && table[next_page].alloc == 1){ //our scheduler is out of my_memory.
 					return NULL;
@@ -377,10 +375,10 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 					next_page++;
 				}
 			}
-			else if(table[next_page].thread == target && table[next_page].alloc == 1){
+			else if(table[next_page].thread == target && table[next_page].alloc == 1){ //we own this page.
 				page++; next_page++;
 			}
-			else if(table[next_page].thread == NULL && table[next_page].alloc == 0){
+			else if(table[next_page].thread == NULL && table[next_page].alloc == 0){//this page was not allocated, lets claim it.
 				if(req == THREADREQ){ table[next_page].thread = target; }
 				else{ table[next_page].thread = NULL; }
 				table[next_page].alloc = 1; table[next_page].vaddr = vaddr;

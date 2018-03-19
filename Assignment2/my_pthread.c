@@ -370,8 +370,8 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 		getcontext(auto_exiter->context_ptr);
 		auto_exiter->context_ptr->uc_link = 0;
 		printf("myallocate: auto_exiter->context_ptr->uc_stack.ss_sp\n");
-		auto_exiter->context_ptr->uc_stack.ss_sp = myallocate(3072, __FILE__, __LINE__, LIBRARYREQ);
-		auto_exiter->context_ptr->uc_stack.ss_size=3072;
+		auto_exiter->context_ptr->uc_stack.ss_sp = myallocate(6144, __FILE__, __LINE__, LIBRARYREQ);
+		auto_exiter->context_ptr->uc_stack.ss_size=6144;
 		auto_exiter->context_ptr->uc_stack.ss_flags=0;
 		makecontext(auto_exiter->context_ptr, (void*)&auto_exit, 1, arg);
 		//printf("\tauto_exiter->context_ptr: %x\n", *auto_exiter->context_ptr);
@@ -402,8 +402,8 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	//initialize context members including uc_link and stack.
 	block->context_ptr->uc_link=auto_exiter->context_ptr;	//TODO: set this to call exit. Figure out what to do if the thread already exited.
 	printf("myallocate: block->context_ptr->uc_stack.ss_sp\n");
-	block->context_ptr->uc_stack.ss_sp = myallocate(3072, __FILE__, __LINE__, LIBRARYREQ);
-	block->context_ptr->uc_stack.ss_size = 3072;
+	block->context_ptr->uc_stack.ss_sp = myallocate(6144, __FILE__, __LINE__, LIBRARYREQ);
+	block->context_ptr->uc_stack.ss_size = 6144;
 	block->context_ptr->uc_stack.ss_flags=0;
 	block->id = ++current_id;
 	
