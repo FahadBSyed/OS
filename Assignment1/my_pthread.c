@@ -293,16 +293,16 @@ void run_from_queue(tcb_node** queue){
 		block->wait_time.tv_usec = 0;
 		currently_running_thread->wait_time.tv_sec = 0;
 		currently_running_thread->wait_time.tv_usec = 0;
-		swapcontext(block->context_ptr, currently_running_thread->context_ptr); 
 		schedule_lock = 0;
+		swapcontext(block->context_ptr, currently_running_thread->context_ptr); 
 	}
 	else{ 
 		gettimeofday(&my_pthread_start_time, NULL);
 		gettimeofday(&my_pthread_end_time, NULL);
 		currently_running_thread->wait_time.tv_sec = 0;
 		currently_running_thread->wait_time.tv_usec = 0;
-		setcontext(currently_running_thread->context_ptr); 
 		schedule_lock = 0;
+		setcontext(currently_running_thread->context_ptr); 
 	}
 	return;
 }
