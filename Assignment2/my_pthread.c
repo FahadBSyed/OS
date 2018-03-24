@@ -309,8 +309,8 @@ void run_from_queue(tcb_node** queue){
 		int swapcontext(ucontext_t *oucp, ucontext_t *ucp);
 		*/
 		*(block->context_ptr) = *(block->context_ptr);
-		swapcontext(block->context_ptr, currently_running_thread->context_ptr);
 		schedule_lock = 0;
+		swapcontext(block->context_ptr, currently_running_thread->context_ptr);
 	}
 	else{ 
 		gettimeofday(&my_pthread_start_time, NULL);
@@ -318,8 +318,8 @@ void run_from_queue(tcb_node** queue){
 		currently_running_thread->wait_time.tv_sec = 0;
 		currently_running_thread->wait_time.tv_usec = 0;
 		unprotectthreadpages(currently_running_thread, 1);
-		setcontext(currently_running_thread->context_ptr); 
 		schedule_lock = 0;
+		setcontext(currently_running_thread->context_ptr); 
 	}
 	return;
 }
@@ -364,7 +364,7 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 		
 		//make the auto_exiter context.
 		printf("myallocate: auto_exiter\n");
-		auto_exiter = myallocate(sizeof(tcb_node), __FILE__, __LINE__, LIBRARYREQ);
+		auto_exiter = myallocate(sizeof(tcb), __FILE__, __LINE__, LIBRARYREQ);
 		printf("myallocate: auto_exiter->context_ptr\n");
 		auto_exiter->context_ptr = myallocate(sizeof(ucontext_t), __FILE__, __LINE__, LIBRARYREQ);
 		getcontext(auto_exiter->context_ptr);
@@ -417,6 +417,18 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	if(make_main){
 		//allocate our main context.
 		currently_running_thread = main_block;
+			//rename any page claimed by thread '1' to whatever the address of currently_running_thread is
+		int i = 0; 
+		printf("renaming.\n");
+		table_row* table = table_ptr;
+		for(i = user_start/page_size; i < mem_size / page_size; i++){
+			
+			if(table[i].thread == (pthread_t)1 && table[i].alloc == 1){ 
+				table[i].thread = (pthread_t)currently_running_thread;
+			}
+		}
+		
+		
 		printf("\nMAIN:\trunning main thread (tcb*) %x.\n", main_block);
 		getcontext(main_block->context_ptr);
 	}

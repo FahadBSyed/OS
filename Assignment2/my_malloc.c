@@ -518,21 +518,6 @@ void* myallocate(size_t x, char* file, int line, int req){
 		}
 	}
 	else if(req == THREADREQ){
-		//Before the scheduler runs, main runs. It won't have a pthread_t so we temporarily assign it the thread id of 1 in the page table.
-		int rename = 0;
-		if(currently_running_thread != NULL && main_init == 0){rename = 1;} //once we have a thread id, we can change it from 1 to its id.
-		
-		if(rename){ //rename any page claimed by thread '1' to whatever the address of currently_running_thread is
-			int i = 0; 
-			printf("renaming.\n");
-			for(i = user_start/page_size; i < mem_size / page_size; i++){
-				
-				if(rename && table[i].thread == (pthread_t)1 && table[i].alloc == 1){ 
-					table[i].thread = (pthread_t)currently_running_thread;
-				}
-			}
-			main_init = 1;	//once main's pages have been renamed, we set main_init to 1 to represent that its been initialized.
-		}
 		
 		int i = user_start/page_size; //Always start at page user_start/page_size.
 		
