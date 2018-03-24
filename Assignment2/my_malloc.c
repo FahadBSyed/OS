@@ -668,7 +668,7 @@ void mydeallocate(void* x, char* file, int line, int req){
 		memcpy(&meta,currmeta+sizeof(segdata)+prev.size,sizeof(segdata));
 		currmeta += sizeof(segdata)+prev.size;
 
-		while(currmeta < user_start+my_memory){
+		while(currmeta <= metapos){
 			if(prev.alloc == 0 && meta.alloc == 0){
 				prev.size = prev.size + meta.size;
 				memcpy(prevmeta, &prev, sizeof(segdata));
@@ -712,7 +712,7 @@ void mydeallocate(void* x, char* file, int line, int req){
 			}
 			if(table[page].alloc == 0){
 				printpage(page,req);
-				printf("FREE SUCCESS ON PAGE ALLOC =0");
+				printf("FREE SUCCESS ON PAGE ALLOC =0\n");
 				return;
 			}
 		}
@@ -721,7 +721,7 @@ void mydeallocate(void* x, char* file, int line, int req){
 		printf("\nMeta.alloc: %d meta.size: %d\n",meta.alloc,meta.size);
                 currmeta += sizeof(segdata)+prev.size;
 		printf("currmeta: %x prevmeta: %x meta.alloc: %d meta.size: %d prev.alloc: %d prev.size: %d\n",currmeta,prevmeta,meta.alloc,meta.size,prev.alloc,prev.size);
-		while(currmeta < my_memory + mem_size){
+		while(currmeta <= metapos){
 			printf("while loop \n");
 			if(prev.alloc == 0 && meta.alloc ==0){
 				printf("Prev and Meta alloc = 0    prev.size: %d  meta.size: %d\n",prev.size,meta.size);
@@ -739,12 +739,13 @@ void mydeallocate(void* x, char* file, int line, int req){
                         		}
 					if(table[page].alloc == 0){
                          			printpage(page,req);
-                       				printf("FREE SUCCESS ON PAGE ALLOC =0");
+                       				printf("FREE SUCCESS ON PAGE ALLOC =0\n");
                                 		break;
                         		}
                 		}
 
 				size_t temp = meta.size;
+				printf("temp: %d\n",temp);
                                 memcpy(&meta, currmeta+sizeof(segdata)+temp,sizeof(segdata));
 
                                 currmeta += sizeof(segdata)+temp;
@@ -769,7 +770,7 @@ void mydeallocate(void* x, char* file, int line, int req){
             			        }
 					if(table[page].alloc == 0){
                                                 printpage(page,req);
-                                                printf("FREE SUCCESS ON PAGE ALLOC =0");
+                                                printf("FREE SUCCESS ON PAGE ALLOC =0\n");
                                                 break;
                                         }
 
