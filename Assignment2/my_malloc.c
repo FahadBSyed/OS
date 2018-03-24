@@ -655,7 +655,7 @@ void mydeallocate(void* x, char* file, int line, int req){
 	segdata nextmeta;
 	memcpy(&nextmeta, next_metapos, sizeof(segdata));
 	if(nextmeta.alloc == 0){
-		meta.size += nextmeta.size;
+		meta.size += nextmeta.size + sizeof(segdata);
 		memcpy(metapos, &meta, sizeof(segdata));
 		printf("combined meta and next.\n");
 	}
@@ -687,14 +687,18 @@ void mydeallocate(void* x, char* file, int line, int req){
 		memcpy(&prev_meta, prev_metapos, sizeof(segdata));
 		printf("prev_meta: %d prev_meta.size: %d prev_meta.alloc: %d\n", (prev_metapos - (void*)my_memory)%page_size, prev_meta.size, prev_meta.alloc);
 		if(prev_metapos + sizeof(segdata) + prev_meta.size == metapos && prev_meta.alloc == 0){
-			prev_meta.size += meta.size;
+			prev_meta.size += meta.size + sizeof(segdata);
 			memcpy(prev_metapos, &prev_meta, sizeof(segdata));
 			printf("combined prev and meta.\n");
 			break;
 		}
+		else{
+			printpage(prev_metapos_page, req);
+		}
 		prev_metapos += sizeof(segdata) + prev_meta.size;
 	}
 	printf("\n");
+	printpage(page, req);
 }
 
 static void handler(int sig, siginfo_t *si, void *unused){
