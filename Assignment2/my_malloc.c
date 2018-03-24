@@ -194,11 +194,51 @@ void* seg_alloc_first(size_t x, int req, int page, int vaddr){
 	printf("seg alloc first.\n");
 	void* mem;
 	table_row* table = table_ptr;
-	table[page].alloc = 1;
 		
 	//create meta data for this block.
 	segdata meta;
 	meta.alloc = 1; meta.size = x;
+	
+	//figure out the total number of pages we overflowed. 
+	unsigned int total_bytes = meta.size + sizeof(meta) + sizeof(meta);
+	unsigned int total_pages = total_bytes / page_size;
+	if(total_bytes % page_size != 0){total_pages++; }
+	
+	int curr_vaddr = vaddr; //this will hold the vaddr of the oveflowed pages as we claim them. 
+	printf("total bytes: %d total pages: %d\n", total_bytes, total_pages);
+	
+	int curr_page = page;
+	while(curr_page < page+total_pages){
+		
+		
+		if(table[curr_page].thread != currently_running_thread && table[curr_page].alloc == 1){
+			
+			int swap_in = pageswap(curr_page, req, curr_vaddr);			
+			if(swap_in == 1){ //this shouldn't ever happen!
+				printf("ERROR: if this is our first allocation for this thread, why are we swapping in a page?\n");
+				exit(0);
+			}
+		}
+		if(table[curr_page].alloc == 0){
+			
+			printf("claim page %d\n", curr_page);
+			//change the table to reflect the currently running thread has claimed this page.
+			if(req == LIBRARYREQ){ 
+				table[curr_page].thread = (pthread_t)currently_running_thread; 
+				
+			}
+			else{
+				if(currently_running_thread != NULL){ table[curr_page].thread = (pthread_t)currently_running_thread; }
+				else{ table[curr_page].thread = (pthread_t)1; }
+			}
+			table[curr_page].vaddr = curr_vaddr; 
+			table[curr_page].alloc = 1;
+			
+		}
+		curr_page++;
+		curr_vaddr++;
+	}
+	
 	memcpy((my_memory + (page * page_size)), &meta, sizeof(meta));
 	mem = my_memory+(page * page_size)+sizeof(meta);
 	
@@ -208,17 +248,6 @@ void* seg_alloc_first(size_t x, int req, int page, int vaddr){
 	if(req == LIBRARYREQ){ nextmeta.size = user_start - os_start - x - sizeof(meta) - sizeof(nextmeta); }
 	int nextmetapos = (page*page_size)+sizeof(meta) + meta.size;
 	memcpy((my_memory + nextmetapos), &nextmeta, sizeof(nextmeta));
-	
-	//change the table to reflect the currently running thread has claimed this page.
-	if(req == LIBRARYREQ){ 
-		table[page].thread = (pthread_t)currently_running_thread; 
-		table[page].vaddr = vaddr; 
-	}
-	else{
-		if(currently_running_thread != NULL){ table[page].thread = (pthread_t)currently_running_thread; }
-		else{ table[page].thread = (pthread_t)1; }
-		table[page].vaddr = vaddr;
-	}
 	
 	printpage(page, req);
 	return mem;
