@@ -645,6 +645,180 @@ void* myallocate(size_t x, char* file, int line, int req){
 	return mem;
 }
 
+/*
+*			Shalloc Function
+*/
+
+void* shared_seg_alloc_first(size_t x){
+	
+	printf("shared seg alloc first.\n");
+	void* mem;
+	table_row* table = table_ptr;
+		
+	//create meta data for this block.
+	segdata meta;
+	meta.alloc = 1; meta.size = x;
+	
+	//figure out the total number of pages we overflowed. 
+	unsigned int total_bytes = meta.size + sizeof(meta) + sizeof(meta);
+	unsigned int total_pages = total_bytes / page_size;
+	if(total_bytes % page_size != 0){total_pages++; }
+	
+	printf("total bytes: %d total pages: %d\n", total_bytes, total_pages);
+	
+	int page = 2048;
+
+	int curr_page = page;
+	while(curr_page < page+total_pages){
+		
+		if(table[curr_page].alloc == 0){
+			
+			printf("claim page %d\n", curr_page); 
+			table[curr_page].alloc = 1;
+			
+		}
+		curr_page++;
+	}
+	
+	memcpy((my_memory + (page * page_size)), &meta, sizeof(meta));
+	mem = my_memory+(page * page_size)+sizeof(meta);
+	
+	//create metadata for the next block, there should only be 2 total blocks.
+	segdata nextmeta; memset(&nextmeta, 0, sizeof(nextmeta));
+	nextmeta.size = mem_size - (4* page_size) - shared_start - x - sizeof(meta) - sizeof(nextmeta); 
+	int nextmetapos = (page*page_size)+sizeof(meta) + meta.size;
+	memcpy((my_memory + nextmetapos), &nextmeta, sizeof(nextmeta));
+	
+	printpage(page, 0);
+	return mem;
+}
+
+void* shared_seg_alloc(size_t x){
+		
+	void* mem;						//pointer to my_memory we eventually return.
+	table_row* table = table_ptr;	//pointer to our table. 	
+	int page = 2048 - 4;
+	int next_page = page+1;
+	//start at the page, get first metadata;
+	segdata meta;
+	memcpy(&meta, (my_memory+(page*page_size)), sizeof(meta));
+	printf("meta: %d size: %d alloc: %d\n", page*page_size, meta.size, meta.alloc);
+	
+	unsigned int nextmetapos = page*page_size;   //this holds the position of the next metadata block in my_memory.
+	while(meta.alloc == 1 || x > meta.size){ //find first unallocated metadata.
+		
+		nextmetapos += sizeof(meta) + meta.size;
+		if(nextmetapos > (next_page)*page_size){
+			page++;
+			next_page++;
+			if(table[page].alloc == 0){
+				table[page].alloc = 1;
+			}
+		}
+		
+		memcpy(&meta, (my_memory+nextmetapos), sizeof(meta));
+		printf("meta: %d size: %d alloc: %d\n", nextmetapos, meta.size, meta.alloc);
+		if(meta.alloc != 1 && meta.alloc != 0){
+			printf("what?\n");
+			exit(1);
+		}
+		if((int)meta.size < 0){
+			printf("what?\n");
+			exit(1);
+		}
+	}
+	
+	//we're at metadata, we need to fill it in now.
+	size_t oldsize = meta.size; 	//old size is used to later to check to see if we need to make a new metadata or not. 
+	meta.alloc = 1; meta.size = x; 
+	
+	//If x is not as big as oldsize, but x + sizeof(metadata) is bigger, it means there is not enough room to create a new metadata block.
+	if(x + sizeof(meta) > oldsize){ //We'll cheat and pretend x is oldsize to get around this.
+		meta.size = oldsize;
+		x = oldsize;
+	}
+	
+	//before we memcpy, we should check to see if the pages we need are in my_memory. 	
+	while(nextmetapos+sizeof(meta)+meta.size > next_page * page_size && nextmetapos+sizeof(meta)+meta.size < mem_size){
+		
+		if(table[next_page].alloc == 0){//this page was not allocated, let's claim it.
+			table[next_page].alloc = 1; 
+			page++; next_page++;
+		}
+	}
+	memcpy((my_memory+nextmetapos), &meta, sizeof(meta)); //copy the metadata into my_memory 
+	if(nextmetapos < 0 || nextmetapos > (my_memory + mem_size)){
+		printf("what the hell?\n");
+		exit(1);
+	}
+	mem = (my_memory +nextmetapos +sizeof(meta));		   //assign our pointer to the position after the metadat.
+	
+	if(x != oldsize){ //we only make a new block if our size is not the same as the old size.
+	
+		//create metadata for the next block after this one, then write it into my_memory.
+		
+		//check whether nextmeta is made on the same page.
+		segdata nextmeta; memset(&nextmeta, 0, sizeof(nextmeta));
+		nextmeta.size = oldsize - (meta.size + sizeof(meta));
+		nextmetapos = nextmetapos + sizeof(meta) + meta.size;
+
+		//before we copy over the nextmetadata, we need to make sure that its page is loaded in. 
+		if(nextmetapos+sizeof(meta) > next_page * page_size){
+			printf("next metadata broke page boundary: %d\n", nextmetapos+sizeof(meta) - (next_page * page_size));			
+			if(table[next_page].alloc == 0){//this page was not allocated, lets claim it.
+				table[next_page].alloc = 1; 
+				page++; next_page++;
+			}
+				
+		}
+		memcpy((my_memory+nextmetapos), &nextmeta, sizeof(nextmeta));
+		printf("new metadata: alloc: %d size: %d\n", nextmeta.alloc, nextmeta.size);
+		
+	
+	}
+	printpage(page, 0);
+	return mem;
+}
+
+
+void* shalloc(size_t x){
+
+	//init metadata on first call.
+	if(user_start == 0 && shared_start == 0 && os_start == 0){
+		initmem();
+	}
+	
+	table_row* table = table_ptr;
+	if(shared_start == 0){
+		shared_start = (2048-4)*page_size;
+	}
+	
+	//get table. 
+	void* mem = NULL; 
+		
+	//try to allocate from os start
+	//if the page 
+	int i = shared_start/page_size;
+	while(mem == NULL && i < mem_size/page_size){
+		if(table[i].alloc == 0 && i == shared_start/page_size){ //if page is free or has never been claimed, then seg_alloc_first.
+			mem = shared_seg_alloc_first(x);
+			break;
+		}
+		if(table[i].alloc == 1){//we own this page.
+			mem = shared_seg_alloc(x);
+			if(mem == NULL){
+				i++;
+			}
+			else{
+				break;
+			}
+		} 
+	}
+	
+	printmem();
+	return mem;
+}
+
 //@TODO: When we start to have contiguous virtual pages, we need to change free so that it can check the next page
 //	     in my_memory if and only if our thread owns that page. 
 //@TODO: We need to change this so that it starts at the right metadata location. We need to start at our thread's FIRST page. 

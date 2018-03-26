@@ -80,6 +80,7 @@ FILE* swap;
 
 unsigned int os_start;	 //address in my_memory where our scheduler's useable pages begin (this is used by the scheduler).
 unsigned int user_start; //address in my_memory where our useable pages begin (this is used by the threads).
+unsigned int shared_start;
 
 unsigned int os_first_free;	//address in my_memory of the first page that is unallocated (this is used by the scheduler).
 unsigned int user_first_free; //address in my_memory of the first page that is unallocated (this is used by the threads).
