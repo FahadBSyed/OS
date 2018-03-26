@@ -184,6 +184,38 @@ void initmem(){
 	}
 	memcpy(my_memory, &table, sizeof(table));
 	table_ptr = (table_row*)my_memory;
+
+	//create swapfile
+	swap = fopen("swapfile.bin","wb");
+	ftruncate(fileno(swap), swap_size);
+
+	//check to see if file created is right size
+	if(swap == NULL){
+		printf("FATAL ERROR Setting up SwapFile\n");
+		exit(EXIT_FAILURE);
+	}else{
+		fseek(swap,0L,SEEK_END);
+		long size = ftell(swap);
+		printf("The SwapFile size is : %1dB\n",size);
+		rewind(swap);
+
+		//sets up page table for swap file
+		table_row swapTable[swap_size/page_size];
+		int j;
+		for(j=0;j<swap_size/page_size;j++){
+			swapTable[j].vaddr = 1;
+			swapTable[j].alloc = 0;
+		}
+		fwrite(&swapTable,sizeof(swapTable),1,swap);
+		
+
+		fclose(swap);
+
+	}
+
+
+	
+
 }
 
 
@@ -542,6 +574,23 @@ void* myallocate(size_t x, char* file, int line, int req){
 				}
 			} 
 		}
+		
+		//page table is full, evict first page(pages) to make room for new
+		//
+		swap = fopen("swapFile.bin","rb+");
+		if(swap == NULL){
+			printf("ERROR: could not open File\n");
+			exit(EXIT_FAILURE);
+		}
+		
+		if (mem == NULL){
+			table_row swapTable[swap_size/page_size];
+			fread(&swapTable,sizeof(swapTable),1,swap);			//might have to fix, loop through page table
+	
+			
+
+		}
+
 		while(table[os_first_free/page_size].alloc != 0){ 	//advance s_first_free to the first free page. 
 			os_first_free += page_size;
 		}

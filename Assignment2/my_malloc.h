@@ -72,8 +72,11 @@ user region (pages 109 - 2044). We need to implement a free() that works across 
 
 #define page_size (sysconf( _SC_PAGE_SIZE ))
 #define mem_size (8 * 1024 * 1024)
+#define swap_size (16 * 1024 * 1024)
 
 char* my_memory; 	//pointer to our memaligned' 8 MB my_memory.
+
+FILE* swap;
 
 unsigned int os_start;	 //address in my_memory where our scheduler's useable pages begin (this is used by the scheduler).
 unsigned int user_start; //address in my_memory where our useable pages begin (this is used by the threads).
@@ -91,6 +94,7 @@ typedef struct table_row {	//struct representing one row of the page table.
 } table_row;
 
 table_row* table_ptr;
+table_row* swap_table_ptr;
 unsigned char main_init;
 
 typedef struct segdata {	//struct representing metadata for a segment within a page.

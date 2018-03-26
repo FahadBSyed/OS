@@ -64,12 +64,18 @@ void* free_test(){
 	char* temp1 = malloc(1024);
 	char* temp2 = malloc(8);
 	char* temp3 = malloc(256);
-
+	char* temp4 = malloc(10000);
+	char* temp5 = malloc(20);
 
 	free(temp);
+	free(temp4);
 	free(temp1);
 	free(temp2);
 	free(temp3);
+	free(temp5);
+
+	char* temp6 = malloc(25000);
+	free(temp6);
 	pthread_exit(NULL);
 
 
@@ -94,12 +100,12 @@ int main(int argc, char** argv){
 	printf("\x1b[36mcreated thread 1.\x1b[0m\n");
 	printf("\x1b[36mcurrently_running_thread: %x\x1b[0m\n", currently_running_thread);
 	
-	char* temp = malloc(512);
-	char* pizza = malloc(512);
+	//char* temp = malloc(512);
+	//char* pizza = malloc(512);
 	//free(pizza);
-	char* temp3 = malloc(256);
-	char* temp4 = malloc(240);
-	char* temp5 = malloc(30002);
+	//char* temp3 = malloc(256);
+	//char* temp4 = malloc(240);
+	//char* temp5 = malloc(30002);
 	
 	int* ret = malloc(sizeof(int));
 	time_t start, curr_time;
