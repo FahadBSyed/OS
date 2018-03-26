@@ -666,7 +666,7 @@ void* shared_seg_alloc_first(size_t x){
 	
 	printf("total bytes: %d total pages: %d\n", total_bytes, total_pages);
 	
-	int page = 2048;
+	int page = 2048-4;
 
 	int curr_page = page;
 	while(curr_page < page+total_pages){
@@ -818,6 +818,74 @@ void* shalloc(size_t x){
 	printmem();
 	return mem;
 }
+
+
+//Have mydeallocate check whether x is in the last four pages, if so, then call this inside. 
+void shared_free(void* x){
+	
+	table_row* table = table_ptr;	//pointer to our table. 
+	int page = (int)((x - (void*)my_memory)/page_size);
+	
+	int vaddr = page - shared_start/page_size + 1;
+
+	void* metapos = x - sizeof(segdata);
+	int metapos_page = (int)((metapos - (void*)my_memory)/page_size);
+	int meta_vaddr = metapos_page - page + vaddr;
+	
+	printf("metapos: %d metapos_page: %d\n", metapos - (void*)my_memory, metapos_page);
+
+	//set alloc = 0 and write to memory. 
+	segdata meta; 
+	memcpy(&meta, metapos, sizeof(segdata));
+	meta.alloc = 0;
+	memcpy(metapos, &meta, sizeof(meta));
+	
+	//move to next meta. 
+	void* next_metapos = metapos + sizeof(meta) + meta.size;
+	int next_metapos_page = (int)((next_metapos - (void*)my_memory)/page_size);
+	
+	printf("next_metapos: %d next_metapos_page: %d\n", next_metapos - (void*)my_memory, next_metapos_page);
+	
+	//double check to make sure metadata also doesn't end on a page we don't own.
+	int next_metapos_end_page = (int)((next_metapos + sizeof(meta) - (void*)my_memory)/page_size);
+	printf("next_metapos_end_page: %d\n",next_metapos_end_page);
+
+	//if next meta is 0, then combine.
+	segdata nextmeta;
+	memcpy(&nextmeta, next_metapos, sizeof(segdata));
+	if(nextmeta.alloc == 0){
+		meta.size += nextmeta.size + sizeof(segdata);
+		memcpy(metapos, &meta, sizeof(segdata));
+		printf("combined meta and next.\n");
+	}
+
+	//Find previous segment's metadata.
+	void* prev_metapos = (void*)(my_memory + shared_start);
+	int prev_metapos_page;
+	
+	segdata prev_meta;
+	while(prev_metapos != metapos){ //traverse from first page to find previous segment's metadata. 
+		
+		prev_metapos_page = (int)((prev_metapos - (void*)my_memory)/page_size);		
+		//printf("prev_metapos_page: %d prev_meta_vaddr: %d\n", prev_metapos_page, prev_meta_vaddr);
+
+		memcpy(&prev_meta, prev_metapos, sizeof(segdata));
+		printf("prev_meta: %d prev_meta.size: %d prev_meta.alloc: %d\n", (prev_metapos - (void*)my_memory)%page_size, prev_meta.size, prev_meta.alloc);
+		if(prev_metapos + sizeof(segdata) + prev_meta.size == metapos && prev_meta.alloc == 0){
+			prev_meta.size += meta.size + sizeof(segdata);
+			memcpy(prev_metapos, &prev_meta, sizeof(segdata));
+			printf("combined prev and meta.\n");
+			break;
+		}
+		else{
+			printpage(prev_metapos_page, 0);
+		}
+		prev_metapos += sizeof(segdata) + prev_meta.size;
+	}
+	printf("\n");
+	printpage(page, 0);
+}
+
 
 //@TODO: When we start to have contiguous virtual pages, we need to change free so that it can check the next page
 //	     in my_memory if and only if our thread owns that page. 

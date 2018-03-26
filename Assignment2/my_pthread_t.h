@@ -24,7 +24,7 @@
 #include <time.h>
 #include "my_malloc.h"
 
-typedef uint my_pthread_t;
+//typedef uint my_pthread_t;
 
 typedef struct threadControlBlock {
 	
@@ -93,8 +93,9 @@ int schedule_lock;
 struct timeval my_pthread_start_time, my_pthread_end_time;
 
 /* Function Declarations: */
-#define my_pthread_t pthread_t
-#define pthread_t tcb*
+//#define my_pthread_t pthread_t
+//#define pthread_t tcb*
+typedef tcb* my_pthread_t;
 
 #define pthread_mutex_t my_pthread_mutex_t
 /* create a new thread */
