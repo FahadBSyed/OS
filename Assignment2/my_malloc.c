@@ -1085,6 +1085,14 @@ void mydeallocate(void* x, char* file, int line, int req){
 		target = currently_running_thread;
 		vaddr = page - user_start/page_size + 1;
 	}
+
+	int checkPage = (int)((x-(void*)my_memory)/page_size);
+
+	if(checkPage > 2043 && checkPage < 2048){
+		shared_free(x);
+		return;
+	}
+
 	
 	if(table[page].thread != currently_running_thread){ //make sure the page with memory to free is ours. 
 		pageswap(page, req, vaddr);
