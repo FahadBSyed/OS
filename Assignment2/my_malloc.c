@@ -907,7 +907,7 @@ void mydeallocate(void* x, char* file, int line, int req){
 
 	int checkPage = (int)((x-(void*)my_memory)/page_size);
 
-	if(checkPage > 2043 && checkPage < 2047){
+	if(checkPage > 2043 && checkPage < 2048){
 		shared_free(x);
 		return;
 	}
