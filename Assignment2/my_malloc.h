@@ -53,6 +53,7 @@ user region (pages 109 - 2044). We need to implement a free() that works across 
 #define MY_MALLOC_H
 
 /* include lib header files that you need here: */
+#include <errno.h>
 #include <signal.h>
 #include <unistd.h>
 #include <string.h>
@@ -78,12 +79,16 @@ char* my_memory; 	//pointer to our memaligned' 8 MB my_memory.
 
 FILE* swap;
 
+unsigned int pageToEvic;
 unsigned int os_start;	 //address in my_memory where our scheduler's useable pages begin (this is used by the scheduler).
 unsigned int user_start; //address in my_memory where our useable pages begin (this is used by the threads).
 unsigned int shared_start;
+unsigned int swap_start;
 
 unsigned int os_first_free;	//address in my_memory of the first page that is unallocated (this is used by the scheduler).
 unsigned int user_first_free; //address in my_memory of the first page that is unallocated (this is used by the threads).
+unsigned int swap_first_free;
+
 
 struct sigaction sa_mem; //signal handler
 

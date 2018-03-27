@@ -171,7 +171,7 @@ void initmem(){
 	os_first_free = sizeof(table) + 1 * page_size;
 	os_start = os_first_free;
 	
-	user_first_free = os_first_free + (100 * page_size); //os gets 100 pages to do its work in. 
+	user_first_free = os_first_free + (1000 * page_size); //os gets 1000 pages to do its work in. 
 	user_start = user_first_free;
 	
 	printf("user start: %d user first: %d\n", user_start, user_first_free);
@@ -186,7 +186,7 @@ void initmem(){
 	table_ptr = (table_row*)my_memory;
 
 	//create swapfile
-	swap = fopen("swapfile.bin","wb");
+	swap = fopen("swapFile.bin","wb");
 	ftruncate(fileno(swap), swap_size);
 
 	//check to see if file created is right size
@@ -206,8 +206,9 @@ void initmem(){
 			swapTable[j].vaddr = 1;
 			swapTable[j].alloc = 0;
 		}
-		fwrite(&swapTable,sizeof(swapTable),1,swap);
 		
+		fwrite(&swapTable,sizeof(swapTable),1,swap);
+		swap_start= sizeof(swapTable) + 1 * page_size;	
 
 		fclose(swap);
 
@@ -459,7 +460,7 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 
 //Performs a page swap. Returns 0 if there was no page to swap in (means its first alloc), 1 if another page was swapped in.
 int pageswap(int swap_out, int req, int vaddr){
-	
+	char buff[page_size];
 	pthread_t target = NULL;
 	if(req == THREADREQ){
 		if(currently_running_thread == NULL){
@@ -478,21 +479,54 @@ int pageswap(int swap_out, int req, int vaddr){
 	unprotectthreadpages(target, 0);
 	
 	user_first_free = user_start;
-	while(table[user_first_free/page_size].alloc != 0){ 	//advance user_first_free to the user_first_free page. 
+	while(table[user_first_free/page_size].alloc != 0 && user_first_free<my_memory+mem_size){ 	//advance user_first_free to the user_first_free page. 
 		user_first_free += page_size;
 	}
+
+	int swapfile_out =-1;
+	if(user_first_free>=my_memory+mem_size){					//no free allocs so have to swap out a file.
+		swap = fopen("swapFile.bin","rb+");
+                if(swap == NULL){
+                	printf("ERROR: could not open File line 490\n");
+                        exit(EXIT_FAILURE);
+                }
+
 	
-	printf("\tfirst free: %u page: %d\n", user_first_free, user_first_free/page_size);
+                table_row swapTable[swap_size/page_size];
+                fread(&swapTable,sizeof(swapTable),1,swap); 
+		
+		
+		for(swapfile_out=swap_start/page_size;swapfile_out<swap_size/page_size;swapfile_out++){
+			if(swapTable[swapfile_out].alloc == 0){
+				rewind(swap);
+				fseek(swap,swap_start+(swapfile_out*page_size),SEEK_SET);
+				fwrite(my_memory+(swap_out*page_size),page_size,1,swap);
+				swapTable[swapfile_out].alloc = 1;
+				swapTable[swapfile_out].thread = table[swap_out].thread;
+				swapTable[swapfile_out].vaddr = table[swap_out].vaddr;
+				break;
+			}
+		}
+		if(swapfile_out>= swap_size/page_size){
+			printf("NO MEMORY LEFT IN SWAPFILE\n");
+			fclose(swap);
+			return -2;
+		}	
+		fclose(swap);
+	}else{
 	
-	memcpy(my_memory + user_first_free, my_memory + (swap_out*page_size), page_size);  //swap their page to a free page.
-	printf("\tmoved page %d to %d.\n\n", swap_out, user_first_free/page_size);
+
+		printf("\tfirst free: %u page: %d\n", user_first_free, user_first_free/page_size);
+	
+		memcpy(my_memory + user_first_free, my_memory + (swap_out*page_size), page_size);  //swap their page to a free page.
+		printf("\tmoved page %d to %d.\n\n", swap_out, user_first_free/page_size);
 	
 	//vaddress should be = to vaddress of where that page just was.
-	table[user_first_free/page_size].thread = table[swap_out].thread; //go to the table, mark that free page as allocated, owned by the thread,
-	table[user_first_free/page_size].alloc = 1;
-	table[user_first_free/page_size].vaddr = table[swap_out].vaddr;
-	printf("\tset table[%d]: thread: %x alloc: %d vaddr: %d\n", user_first_free/page_size, table[user_first_free/page_size].thread, table[user_first_free/page_size].alloc, table[user_first_free/page_size].vaddr);
-	
+		table[user_first_free/page_size].thread = table[swap_out].thread; //go to the table, mark that free page as allocated, owned by the thread,
+		table[user_first_free/page_size].alloc = 1;
+		table[user_first_free/page_size].vaddr = table[swap_out].vaddr;
+		printf("\tset table[%d]: thread: %x alloc: %d vaddr: %d\n", user_first_free/page_size, table[user_first_free/page_size].thread, table[user_first_free/page_size].alloc, table[user_first_free/page_size].vaddr);
+	}
 	//we know page i faulted.
 	int swap_in = user_start/page_size;
 	for(swap_in; swap_in < mem_size/page_size; swap_in++){
@@ -501,13 +535,48 @@ int pageswap(int swap_out, int req, int vaddr){
 	}
 	
 	//we should be at our page in my_memory or we had no page.
-	if(swap_in == mem_size/page_size){ //we didn't have a previous first page.
+	if(swap_in == mem_size/page_size){ //we didn't have a previous first page or resides in swapfile.
 		
-		printf("\tno page to swap in.\n\n");
-		table[swap_out].alloc = 0;
-		table[swap_out].thread = NULL;
-		protectthreadpages(prev_owner, 0);
-		return 0;
+		swap = fopen("swapFile.bin","rb+");
+                if(swap == NULL){
+			int errnum = errno;
+                	printf("ERROR: could not open File line 542\n");
+			perror("Error by perror");
+                	exit(EXIT_FAILURE);
+                }
+
+
+
+                if(pageToEvic >= mem_size/page_size){
+                        pageToEvic = 0;
+                }
+                table_row swapTable[swap_size/page_size];
+                fread(&swapTable,sizeof(swapTable),1,swap);      	
+		
+		for(swap_in=swap_start/page_size;swap_in<swap_size/page_size;swap_in++){
+			if(swapTable[swap_in].thread == target && swapTable[swap_in].alloc == 1 && swapTable[swap_in].vaddr == vaddr){break;}	
+		}
+		if(swap_in >= swap_size/page_size){
+			printf("\tno page to swap in.\n\n");
+			table[swap_out].alloc = 0;
+			table[swap_out].thread = NULL;
+			protectthreadpages(prev_owner, 0);
+			return 0;
+		}else{												//found in swapFile
+			fseek(swap,swap_start+(swap_in*page_size),SEEK_SET);
+			fread(my_memory+(swap_out*page_size),page_size,1,swap);
+			table[swap_out].thread = target;
+			table[swap_out].alloc = 1;
+			table[swap_out].vaddr = swapTable[swap_in].vaddr;
+
+			swapTable[swap_in].thread = NULL;
+			swapTable[swap_in].alloc = 0;
+			swapTable[swap_in].vaddr = 0;
+					
+			protectthreadpages(prev_owner,0);
+			fclose(swap);
+			return 1;
+		}
 	}
 	else{ //we found the page.
 		
@@ -577,20 +646,68 @@ void* myallocate(size_t x, char* file, int line, int req){
 		
 		//page table is full, evict first page(pages) to make room for new
 		//
-		swap = fopen("swapFile.bin","rb+");
-		if(swap == NULL){
-			printf("ERROR: could not open File\n");
-			exit(EXIT_FAILURE);
-		}
+
 		
 		if (mem == NULL){
+
+			swap = fopen("swapFile.bin","rb+");
+	                if(swap == NULL){
+        	                printf("ERROR: could not open File line 653\n");
+        	                exit(EXIT_FAILURE);
+        	        }
+
+
+
+			if(pageToEvic >= mem_size/page_size){
+				pageToEvic = 0;
+			}
 			table_row swapTable[swap_size/page_size];
 			fread(&swapTable,sizeof(swapTable),1,swap);			//might have to fix, loop through page table
-	
-			
+			int j;
+			for(j =swap_start/page_size;j< swap_size/page_size;j++){	//j is page in swap file to be put in pagetable so malloc can use
+				if(swapTable[j].alloc == 0){
+					table[pageToEvic].alloc =0;
+					
+					swapTable[j].alloc = 1;
+					swapTable[j].vaddr = table[pageToEvic].vaddr;				
+					swapTable[j].thread = table[pageToEvic].thread;
+ 					rewind(swap);
+					fseek(swap,swap_start+(j*page_size),SEEK_SET);
+					//ADD CHECK FOR END OF SWAP
+					fwrite(os_start+(pageToEvic*page_size),page_size,1,swap);
+				
+					mem = seg_alloc_first(x, req, pageToEvic, vaddr);
+					if(mem != NULL){
+						pageToEvic++;
+						break;
+					}
+				}else if(swapTable[j].thread == target){
+					
+					swapTable[j].vaddr = table[pageToEvic].vaddr;
+					rewind(swap);
+					
+					char buff[page_size];
+					memcpy(&buff,os_start+(pageToEvic*page_size),page_size);
+					fseek(swap,swap_start+(j*page_size),SEEK_SET);
+					fread(os_start+(pageToEvic*page_size),page_size,1,swap);
+					fseek(swap,swap_start+(j*page_size),SEEK_SET);
+					fwrite(&buff,page_size,1,swap);
+					
+					mem = seg_alloc(x, req, pageToEvic,vaddr);
+					if(mem==NULL){
+						vaddr++;
+					}else{
+						pageToEvic++;
+						break;
+					}
+				}else{
+					printf("SHOULD NOT GET HERE OS SWAPFILE\n");	
+				}	
+			}
+			fclose(swap);
 
 		}
-
+//FIX THESE WHILE LOOPS TRAVIS TO NOT GO OUT OF BOUNDS
 		while(table[os_first_free/page_size].alloc != 0){ 	//advance s_first_free to the first free page. 
 			os_first_free += page_size;
 		}
@@ -631,7 +748,71 @@ void* myallocate(size_t x, char* file, int line, int req){
 					break;
 				}
 			} 
-		}		
+		}
+	
+		if (mem == NULL){
+
+			swap = fopen("swapFile.bin","rb+");
+	                if(swap == NULL){
+        	                printf("ERROR: could not open File line 755\n");
+        	                exit(EXIT_FAILURE);
+        	        }
+
+
+
+			if(pageToEvic >= mem_size/page_size){
+				pageToEvic = 0;
+			}
+			table_row swapTable[swap_size/page_size];
+			fread(&swapTable,sizeof(swapTable),1,swap);			//might have to fix, loop through page table
+			int j;
+			for(j =swap_start/page_size;j< swap_size/page_size;j++){	//j is page in swap file to be put in pagetable so malloc can use
+				if(swapTable[j].alloc == 0){
+					table[pageToEvic].alloc =0;
+					
+					swapTable[j].alloc = 1;
+					swapTable[j].vaddr = table[pageToEvic].vaddr;				
+					swapTable[j].thread = table[pageToEvic].thread;
+ 					rewind(swap);
+					fseek(swap,swap_start+(j*page_size),SEEK_SET);
+					//ADD CHECK FOR END OF SWAP
+					fwrite(os_start+(pageToEvic*page_size),page_size,1,swap);
+				
+					mem = seg_alloc_first(x, req, pageToEvic, vaddr);
+					if(mem != NULL){
+						pageToEvic++;
+						break;
+					}
+				}else if(swapTable[j].thread == target){
+					
+					swapTable[j].vaddr = table[pageToEvic].vaddr;
+					rewind(swap);
+					
+					char buff[page_size];
+					memcpy(&buff,os_start+(pageToEvic*page_size),page_size);
+					fseek(swap,swap_start+(j*page_size),SEEK_SET);
+					fread(os_start+(pageToEvic*page_size),page_size,1,swap);
+					fseek(swap,swap_start+(j*page_size),SEEK_SET);
+					fwrite(&buff,page_size,1,swap);
+					
+					mem = seg_alloc(x, req, pageToEvic,vaddr);
+					if(mem==NULL){
+						vaddr++;
+					}else{
+						pageToEvic++;
+						break;
+					}
+				}else{
+					printf("SHOULD NOT GET HERE OS SWAPFILE\n");	
+				}	
+			}
+			fclose(swap);
+
+		}
+
+
+//FIX THESE WHILE LOOPS TRAVIS TO NOT GO OUT OF BOUNDS
+		
 		while(table[user_first_free/page_size].alloc != 0){ 	//advance user_first_free to the first free page. 
 			user_first_free += page_size;
 		}
