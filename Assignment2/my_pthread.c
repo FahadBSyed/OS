@@ -402,8 +402,8 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	//initialize context members including uc_link and stack.
 	block->context_ptr->uc_link=auto_exiter->context_ptr;	//TODO: set this to call exit. Figure out what to do if the thread already exited.
 	printf("myallocate: block->context_ptr->uc_stack.ss_sp\n");
-	block->context_ptr->uc_stack.ss_sp = myallocate(32*1024, __FILE__, __LINE__, LIBRARYREQ);
-	block->context_ptr->uc_stack.ss_size = 32*1024;
+	block->context_ptr->uc_stack.ss_sp = myallocate(80*1024, __FILE__, __LINE__, LIBRARYREQ);
+	block->context_ptr->uc_stack.ss_size = 80*1024;
 	block->context_ptr->uc_stack.ss_flags=0;
 	block->id = ++current_id;
 	
