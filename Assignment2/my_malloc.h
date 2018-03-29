@@ -119,6 +119,8 @@ void mydeallocate(void* x, char* file, int line, int req);
 
 static void handler(int sig, siginfo_t *si, void *unused);
 
+void* shalloc(size_t x);
+
 #endif
 
 
