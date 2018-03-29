@@ -15,12 +15,12 @@ void protectthreadpages(pthread_t thread, int debug){
 		
 		if((*(table + i)).thread == thread && (*(table + i)).alloc == 1){
 			mprotect( (my_memory+(i*page_size)), page_size, PROT_NONE);
-			if(debug){
-				printf("page: %d address: %x - %x is protected.\n", i, (my_memory+(i*page_size)), (my_memory+((i+1)*page_size) - 1));
-			}
+			//if(debug){
+				//printf("page: %d address: %x - %x is protected.\n", i, (my_memory+(i*page_size)), (my_memory+((i+1)*page_size) - 1));
+			//}
 		}
 	}
-	if(debug) printf("\n");
+	//if(debug) //printf("\n");
 }
 
 //This function goes through the page table and removes mprotection from any page belonging to 'thread'
@@ -31,32 +31,32 @@ void unprotectthreadpages(pthread_t thread, int debug){
 		
 		if(table[i].thread == thread && table[i].alloc == 1){
 			mprotect( (my_memory+(i*page_size)), page_size, PROT_READ | PROT_WRITE);
-			if(debug){
-				printf("page: %d address: %x - %x is unprotected.\n", i, (my_memory+(i*page_size)), (my_memory+((i+1)*page_size) - 1));
-			}
+			//if(debug){
+				//printf("page: %d address: %x - %x is unprotected.\n", i, (my_memory+(i*page_size)), (my_memory+((i+1)*page_size) - 1));
+			//}
 		}
 	}
-	if(debug) printf("\n");
+	//if(debug) //printf("\n");
 }
 
 
 //This debug function prints out which pages are allocated and which threads own them. 
 void printmem(){
 	
-	printf("printing my_memory: \n");
+	//printf("printing my_memory: \n");
 	unsigned int i = 0;
 	table_row* table = table_ptr;
 	for (i = os_start/page_size; i < mem_size/page_size; i++){
 		
 		if(table[i].alloc == 0){
-			//printf("is free.\n");
+			////printf("is free.\n");
 			continue;
 		}
 		else{
-			printf("page %d thread: %x vaddr: %x\n", i, table[i].thread, table[i].vaddr);
+			//printf("page %d thread: %x vaddr: %x\n", i, table[i].thread, table[i].vaddr);
 		}
 	}
-	printf("\n");
+	//printf("\n");
 }
 
 //This debug function prints out the segment metadata for a given page.
@@ -73,21 +73,21 @@ void printpage(int page, int req){
 	}
 	
 	if(table[page].alloc == 0){
-		printf("page %d is unallocated.\n", page);
+		//printf("page %d is unallocated.\n", page);
 		return;
 	}
 	if((page != os_start/page_size && page != user_start/page_size) && table[page - 1].vaddr != table[page].vaddr - 1){
 		if(table[page].thread == table[page-1].thread){
-			printf("ERROR: pages are out of order. vaddress of page %d is %x while vaddress of page %d is %x\n", page-1, table[page-1].vaddr, page, table[page].vaddr);
+			//printf("ERROR: pages are out of order. vaddress of page %d is %x while vaddress of page %d is %x\n", page-1, table[page-1].vaddr, page, table[page].vaddr);
 			exit(1);
 		}
 		else if(table[page].thread != table[page-1].thread){
-			printf("page %d has been swapped out.\n", page);
+			//printf("page %d has been swapped out.\n", page);
 			return;
 		}
 	}
 
-	printf("printing page %d:\n", page);
+	//printf("printing page %d:\n", page);
 	
 	int start_page = -1;
 	if(req == LIBRARYREQ){
@@ -101,20 +101,20 @@ void printpage(int page, int req){
 	meta.alloc =0; meta.size = 0;
 	while(i/page_size != page){
 		if(i/page_size > page){
-			printf("meta data allocated between page boundaries.\n");
+			//printf("meta data allocated between page boundaries.\n");
 			return;
 		}
 		
-		printf("not at our page: target: %d current: %d offset: %d ", page, i/page_size, i%page_size);
+		//printf("not at our page: target: %d current: %d offset: %d ", page, i/page_size, i%page_size);
 		memcpy(&meta, (my_memory+i), sizeof(meta));
-		printf("alloc: %d size: %d\n", meta.alloc, meta.size);
+		//printf("alloc: %d size: %d\n", meta.alloc, meta.size);
 
 		if((int)meta.size < 0){
-			printf("ERROR: negative size:\n");
+			//printf("ERROR: negative size:\n");
 			exit(1);
 		}
 		if(meta.alloc > 1 || meta.alloc < 0){
-			printf("ERROR: alloc is wrong value.\n");
+			//printf("ERROR: alloc is wrong value.\n");
 			exit(1);
 		}
 		
@@ -122,32 +122,32 @@ void printpage(int page, int req){
 	}
 	
 	if(meta.alloc == 0 && meta.size == 0){
-		printf("first page.\n");
+		//printf("first page.\n");
 		memcpy(&meta, (my_memory+i), sizeof(meta));
 	}
 	else{
-		printf("alloc: %d size: %d <-- from previous page.\n", meta.alloc, meta.size);
+		//printf("alloc: %d size: %d <-- from previous page.\n", meta.alloc, meta.size);
 	}
 	
 	for(i; i < (page+1) * page_size; i += 0){
 		
 		memcpy(&meta, my_memory+i, sizeof(meta));
-		printf("alloc: %d size: %d\n", meta.alloc, meta.size);
+		//printf("alloc: %d size: %d\n", meta.alloc, meta.size);
 		if((int)meta.size < 0){
-			printf("ERROR: negative size:\n");
+			//printf("ERROR: negative size:\n");
 			exit(1);
 		}
 		if(meta.alloc > 1 || meta.alloc < 0){
-			printf("ERROR: alloc is wrong value.\n");
+			//printf("ERROR: alloc is wrong value.\n");
 		}
 		
 		if(meta.alloc == 0 && meta.size == 0){
-			printf("ERROR: this should never happen, we've probably clobbered data.\n");
+			//printf("ERROR: this should never happen, we've probably clobbered data.\n");
 			exit(1);
 		}
 		i += meta.size + sizeof(meta);
 	}
-	printf("\n");
+	//printf("\n");
 }
 
 //This function must be called before myallocate and free can perform properly.
@@ -160,7 +160,7 @@ void initmem(){
 	sa_mem.sa_sigaction = (void*)&handler;
 
 	if (sigaction(SIGSEGV, &sa_mem, NULL) == -1){
-		printf("Fatal error setting up signal handler\n");
+		//printf("Fatal error setting up signal handler\n");
 		exit(EXIT_FAILURE);    //explode!
 	}
 	
@@ -168,7 +168,7 @@ void initmem(){
 	main_init = 0;
 	
 	int test = posix_memalign((void**)&my_memory, page_size, mem_size);
-	printf("my_memory: %x\n", my_memory);
+	//printf("my_memory: %x\n", my_memory);
 	
 	//conserver first table_size + 1 pages for our metadata.
 	table_row table[mem_size / page_size];
@@ -178,7 +178,7 @@ void initmem(){
 	user_first_free = os_first_free + (1000 * page_size); //os gets 1000 pages to do its work in. 
 	user_start = user_first_free;
 	
-	printf("user start: %d user first: %d\n", user_start, user_first_free);
+	//printf("user start: %d user first: %d\n", user_start, user_first_free);
 	
 	//create virtual my_memory page table.
 	int i = 0;
@@ -188,7 +188,7 @@ void initmem(){
 	}
 
 //	for(i=0; i<mem_size/page_size;i++){
-//		printf("table[%d]  alloc: %d vaddr: %d\n",i,table[i].alloc,table[i].vaddr);
+//		//printf("table[%d]  alloc: %d vaddr: %d\n",i,table[i].alloc,table[i].vaddr);
 //	}
 //	exit(1);
 	
@@ -203,15 +203,15 @@ void initmem(){
 
 	//check to see if file created is right size
 	if(swap == NULL){
-		printf("FATAL ERROR Setting up SwapFile\n");
+		//printf("FATAL ERROR Setting up SwapFile\n");
 		exit(EXIT_FAILURE);
 	}else{
 		fseek(swap,0L,SEEK_END);
 		long size = ftell(swap);
-		printf("The SwapFile size is : %1dB\n",size);
+		//printf("The SwapFile size is : %1dB\n",size);
 		int err = fseek(swap,0L,SEEK_SET);
 		if(err!=0){
-			printf("ERROR pointer does not reset to beginning of file");
+			//printf("ERROR pointer does not reset to beginning of file");
 			exit(EXIT_FAILURE);
 		}
 		
@@ -223,7 +223,7 @@ void initmem(){
 		for(j=0;j<swap_size/page_size;j++){
 			swapTable[j].vaddr = 1;
 			swapTable[j].alloc = 0;
-//			printf("swapTable[%d] alloc: %d vaddr: %d\n",j,swapTable[j].alloc,swapTable[j].vaddr);
+//			//printf("swapTable[%d] alloc: %d vaddr: %d\n",j,swapTable[j].alloc,swapTable[j].vaddr);
 		}
 		fwrite(&swapTable,sizeof(table_row)*swap_size/page_size,1,swap);
 		fclose(swap);
@@ -233,16 +233,16 @@ void initmem(){
 		table_row t[swap_size/page_size];
 		err = fseek(swap,0L,SEEK_SET);
                 if(err!=0){
-                      	printf("ERROR pointer does not reset to beginning of file");
+                      	//printf("ERROR pointer does not reset to beginning of file");
                        	exit(EXIT_FAILURE);
                 }
 		fread(&t,sizeof(table_row)*swap_size/page_size,1,swap);
 		for(j=0;j<swap_size/page_size;j++){
-			printf("t[%d] alloc: %d vaddr: %d\n",j,t[j].alloc,t[j].vaddr);
+			//printf("t[%d] alloc: %d vaddr: %d\n",j,t[j].alloc,t[j].vaddr);
 		}
 */
 		
-//		printf("swaptable size: %d vs other: %d",sizeof(swapTable),sizeof(table_row)*(swap_size/page_size));
+//		//printf("swaptable size: %d vs other: %d",sizeof(swapTable),sizeof(table_row)*(swap_size/page_size));
 
 		swap_start= sizeof(swapTable) + 1 * page_size;
 	}
@@ -257,7 +257,7 @@ void initmem(){
 //It creates metadata for the first segment then creates another metadata for the remainder of the region. 
 void* seg_alloc_first(size_t x, int req, int page, int vaddr){
 	
-	printf("seg alloc first.\n");
+	//printf("seg alloc first.\n");
 	void* mem;
 	table_row* table = table_ptr;
 		
@@ -271,7 +271,7 @@ void* seg_alloc_first(size_t x, int req, int page, int vaddr){
 	if(total_bytes % page_size != 0){total_pages++; }
 	
 	int curr_vaddr = vaddr; //this will hold the vaddr of the oveflowed pages as we claim them. 
-	printf("total bytes: %d total pages: %d\n", total_bytes, total_pages);
+	//printf("total bytes: %d total pages: %d\n", total_bytes, total_pages);
 	
 	int curr_page = page;
 	
@@ -286,13 +286,13 @@ void* seg_alloc_first(size_t x, int req, int page, int vaddr){
 			
 			int swap_in = pageswap(curr_page, req, curr_vaddr);			
 			if(swap_in == 1){ //this shouldn't ever happen!
-				printf("ERROR: if this is our first allocation for this thread, why are we swapping in a page?\n");
+				//printf("ERROR: if this is our first allocation for this thread, why are we swapping in a page?\n");
 				exit(0);
 			}
 		}
 		if(table[curr_page].alloc == 0){
 			
-			//printf("claim page %d\n", curr_page);
+			////printf("claim page %d\n", curr_page);
 			//change the table to reflect the currently running thread has claimed this page.
 			if(req == LIBRARYREQ){ 
 				table[curr_page].thread = (pthread_t)currently_running_thread; 
@@ -333,7 +333,7 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 	table_row* table = table_ptr;	//pointer to our table. 
 	int next_page = page + 1;
 	
-	//printf("try page: %d\n", page);
+	////printf("try page: %d\n", page);
 	
 	pthread_t target; 
 	if(req == LIBRARYREQ) target = NULL;
@@ -342,12 +342,12 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 	//start at the page, get first metadata;
 	segdata meta;
 	memcpy(&meta, (my_memory+(page*page_size)), sizeof(meta));
-	//printf("meta: %d size: %d alloc: %d\n", page*page_size, meta.size, meta.alloc);
+	////printf("meta: %d size: %d alloc: %d\n", page*page_size, meta.size, meta.alloc);
 	
 	unsigned int nextmetapos = page*page_size;   //this holds the position of the next metadata block in my_memory.
 	while(meta.alloc == 1 || x > meta.size){ //find first unallocated metadata.
 		
-		//printf("alloc: %d size: %d\n", meta.alloc, meta.size);
+		////printf("alloc: %d size: %d\n", meta.alloc, meta.size);
 		nextmetapos += sizeof(meta) + meta.size;
 		while(nextmetapos >= (next_page) * page_size){
 			//check if the next page is owned by us. If not, call page_swap. 
@@ -355,7 +355,7 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 				vaddr++;
 				page++;
 				next_page++;
-				printf("next meta: %d\n", nextmetapos);
+				//printf("next meta: %d\n", nextmetapos);
 			}
 			else if(table[next_page].thread != target && table[next_page].alloc == 1){//we do not own this page.
 				
@@ -367,7 +367,7 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 				int swap_in = pageswap(next_page, req, vaddr); //swap out next page.
 				if(swap_in == 0){ //no page was swapped in.
 					//we have an error don't we? the next meta was supposed to take us to the next page. So we failed.
-					printf("ERROR: metadata specified data across page %d into page %d, but no page %d was found.\n", page, next_page, next_page);
+					//printf("ERROR: metadata specified data across page %d into page %d, but no page %d was found.\n", page, next_page, next_page);
 					exit(1);
 				}
 				else if(swap_in == 1){ //page was swapped in. 
@@ -376,18 +376,18 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 				}
 			}
 			else{
-				printf("we shouldn't be here.\n");
+				//printf("we shouldn't be here.\n");
 				exit(1);
 			}
 		}
 		memcpy(&meta, (my_memory+nextmetapos), sizeof(meta));
-		printf("meta: %d size: %d alloc: %d\n", nextmetapos, meta.size, meta.alloc);
+		//printf("meta: %d size: %d alloc: %d\n", nextmetapos, meta.size, meta.alloc);
 		if(meta.alloc != 1 && meta.alloc != 0){
-			printf("what meta alloc == 1 and 2?\n");
+			//printf("what meta alloc == 1 and 2?\n");
 			exit(1);
 		}
 		if((int)meta.size < 0){
-			printf("what meta size <0?\n");
+			//printf("what meta size <0?\n");
 			exit(1);
 		}
 	}
@@ -437,7 +437,7 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 	}
 	memcpy((my_memory+nextmetapos), &meta, sizeof(meta)); //copy the metadata into my_memory 
 	if(nextmetapos < 0 || nextmetapos > (my_memory + mem_size)){
-		printf("what the hell?\n");
+		//printf("what the hell?\n");
 		exit(1);
 	}
 	mem = (my_memory +nextmetapos +sizeof(meta));		   //assign our pointer to the position after the metadat.
@@ -453,7 +453,7 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 
 		//before we copy over the nextmetadata, we need to make sure that its page is loaded in. 
 		if(nextmetapos+sizeof(meta) > next_page * page_size){
-			printf("next metadata broke page boundary: %d\n", nextmetapos+sizeof(meta) - (next_page * page_size));
+			//printf("next metadata broke page boundary: %d\n", nextmetapos+sizeof(meta) - (next_page * page_size));
 			vaddr++;
 
 			if(table[next_page].thread != target && table[next_page].alloc == 1){ //someone else owns that page. 
@@ -488,7 +488,7 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 		}
 			
 		memcpy((my_memory+nextmetapos), &nextmeta, sizeof(nextmeta));
-		printf("new metadata: alloc: %d size: %d\n", nextmeta.alloc, nextmeta.size);
+		//printf("new metadata: alloc: %d size: %d\n", nextmeta.alloc, nextmeta.size);
 		
 	
 	}
@@ -508,11 +508,11 @@ int pageswap(int swap_out, int req, int vaddr){
 			target = currently_running_thread;
 		}
 	}
-	printf("\n\ttarget: %x\n", target);
+	//printf("\n\ttarget: %x\n", target);
 	
 	table_row* table = table_ptr;
 	pthread_t prev_owner = table[swap_out].thread; 	//figure out who this page belongs to currently.
-	printf("\t%x owns page %d and we have to swap it out.\n", prev_owner, swap_out);
+	//printf("\t%x owns page %d and we have to swap it out.\n", prev_owner, swap_out);
 	unprotectthreadpages(prev_owner, 0);  			  	//unprotect their pages.
 	unprotectthreadpages(target, 0);
 	
@@ -524,9 +524,9 @@ int pageswap(int swap_out, int req, int vaddr){
 	int swapfile_out =-1;
 	if(user_first_free/page_size >= 2044){					//no free allocs so have to swap out a file.
 		swap = fopen("swapFile.bin","rb+");
-		printf("\n\nuser_first_free: %x my_memory+mem_size: %x PAGE SWAP IS WRITING TO SWAP FILE\n\n",user_first_free,my_memory+mem_size);
+		//printf("\n\nuser_first_free: %x my_memory+mem_size: %x PAGE SWAP IS WRITING TO SWAP FILE\n\n",user_first_free,my_memory+mem_size);
                 if(swap == NULL){
-                	printf("ERROR: could not open File line 490\n");
+                	//printf("ERROR: could not open File line 490\n");
                         exit(EXIT_FAILURE);
                 }
 
@@ -549,7 +549,7 @@ int pageswap(int swap_out, int req, int vaddr){
 			}
 		}
 		if(swapfile_out>= swap_size/page_size){
-			printf("NO MEMORY LEFT IN SWAPFILE\n");
+			//printf("NO MEMORY LEFT IN SWAPFILE\n");
 			fclose(swap);
 			return -2;
 		}	
@@ -557,16 +557,16 @@ int pageswap(int swap_out, int req, int vaddr){
 	}else{
 	
 
-		printf("\tfirst free: %u page: %d\n", user_first_free, user_first_free/page_size);
-		//printf("\tmy_memory + mem size - (page_size * 4): %u\n", ((unsigned int)(my_memory + mem_size)) - (4096*4));
+		//printf("\tfirst free: %u page: %d\n", user_first_free, user_first_free/page_size);
+		////printf("\tmy_memory + mem size - (page_size * 4): %u\n", ((unsigned int)(my_memory + mem_size)) - (4096*4));
 		memcpy(my_memory + user_first_free, my_memory + (swap_out*page_size), page_size);  //swap their page to a free page.
-		printf("\tmoved page %d to %d.\n\n", swap_out, user_first_free/page_size);
+		//printf("\tmoved page %d to %d.\n\n", swap_out, user_first_free/page_size);
 	
 	//vaddress should be = to vaddress of where that page just was.
 		table[user_first_free/page_size].thread = table[swap_out].thread; //go to the table, mark that free page as allocated, owned by the thread,
 		table[user_first_free/page_size].alloc = 1;
 		table[user_first_free/page_size].vaddr = table[swap_out].vaddr;
-		printf("\tset table[%d]: thread: %x alloc: %d vaddr: %d\n", user_first_free/page_size, table[user_first_free/page_size].thread, table[user_first_free/page_size].alloc, table[user_first_free/page_size].vaddr);
+		//printf("\tset table[%d]: thread: %x alloc: %d vaddr: %d\n", user_first_free/page_size, table[user_first_free/page_size].thread, table[user_first_free/page_size].alloc, table[user_first_free/page_size].vaddr);
 	}
 
 
@@ -580,11 +580,11 @@ int pageswap(int swap_out, int req, int vaddr){
 	
 	//we should be at our page in my_memory or we had no page.
 	if(swap_in == mem_size/page_size){ //we didn't have a previous first page or resides in swapfile.
-		printf("\n\nPAGE to swap in resides in SWAPFILE or does not exist\n\n");
+		//printf("\n\nPAGE to swap in resides in SWAPFILE or does not exist\n\n");
 		swap = fopen("swapFile.bin","rb+");
                 if(swap == NULL){
 			int errnum = errno;
-                	printf("ERROR: could not open File line 542\n");
+                	//printf("ERROR: could not open File line 542\n");
 			perror("Error by perror");
                 	exit(EXIT_FAILURE);
                 }
@@ -596,7 +596,7 @@ int pageswap(int swap_out, int req, int vaddr){
 			if(swapTable[swap_in].thread == target && swapTable[swap_in].alloc == 1 && swapTable[swap_in].vaddr == vaddr){break;}	
 		}
 		if(swap_in >= swap_size/page_size){
-			printf("\tno page to swap in.\n\n");
+			//printf("\tno page to swap in.\n\n");
 			table[swap_out].alloc = 0;
 			table[swap_out].thread = NULL;
 			protectthreadpages(prev_owner, 0);
@@ -618,7 +618,7 @@ int pageswap(int swap_out, int req, int vaddr){
                 	swap = fopen("swapFile.bin","rb+");
                 	if(swap == NULL){
                         	int errnum = errno;
-                        	printf("ERROR: could not open File line 542\n");
+                        	//printf("ERROR: could not open File line 542\n");
                         	perror("Error by perror");
                         	exit(EXIT_FAILURE);
                 	}
@@ -630,18 +630,18 @@ int pageswap(int swap_out, int req, int vaddr){
 	}
 	else{ //we found the page.
 		
-		printf("\tswap_in from page table: %d\n", swap_in);
+		//printf("\tswap_in from page table: %d\n", swap_in);
 		memcpy(my_memory + (swap_out * page_size), my_memory + (swap_in * page_size), page_size); //memcpy that page over to the page that faulted. 
-		printf("\tpasting page %d over %d\n", swap_in, swap_out);
+		//printf("\tpasting page %d over %d\n", swap_in, swap_out);
 		table[swap_out].thread = target;
 		table[swap_out].alloc = 1;
 		table[swap_out].vaddr = table[swap_in].vaddr;
-		printf("\ttable[%d]: thread: %x alloc: %d vaddr: %d\n", swap_out, table[swap_out].thread, table[swap_out].alloc, table[swap_out].vaddr );
+		//printf("\ttable[%d]: thread: %x alloc: %d vaddr: %d\n", swap_out, table[swap_out].thread, table[swap_out].alloc, table[swap_out].vaddr );
 		
 		table[swap_in].thread = NULL;
 		table[swap_in].vaddr = 0;
 		table[swap_in].alloc = 0;
-		printf("\ttable[%d]: thread: %x alloc: %d vaddr: %d\n\n", swap_in, table[swap_in].thread, table[swap_in].alloc, table[swap_in].vaddr );
+		//printf("\ttable[%d]: thread: %x alloc: %d vaddr: %d\n\n", swap_in, table[swap_in].thread, table[swap_in].alloc, table[swap_in].vaddr );
 		
 		protectthreadpages(prev_owner, 0);
 		return 1;
@@ -660,7 +660,7 @@ void* myallocate(size_t x, char* file, int line, int req){
 		initmem();
 	}
 	
-	printf("req: %d size: %d\n", req, x);
+	//printf("req: %d size: %d\n", req, x);
 	
 	//get table. 
 	table_row* table = table_ptr;
@@ -672,7 +672,7 @@ void* myallocate(size_t x, char* file, int line, int req){
 		target = currently_running_thread;
 		if(target == NULL){target = (pthread_t)1;}
 	}
-	printf("target: %x\n", target);
+	//printf("target: %x\n", target);
 	
 	if(req == LIBRARYREQ){
 		
@@ -703,10 +703,10 @@ void* myallocate(size_t x, char* file, int line, int req){
 
 		
 		if (mem == NULL){
-			printf("\n\n\nMUST USE SWAPFILE\n\n\n");
+			//printf("\n\n\nMUST USE SWAPFILE\n\n\n");
 			swap = fopen("swapFile.bin","rb+");
 	                if(swap == NULL){
-        	                printf("ERROR: could not open File line 653\n");
+        	                //printf("ERROR: could not open File line 653\n");
         	                exit(EXIT_FAILURE);
         	        }
 
@@ -723,7 +723,7 @@ void* myallocate(size_t x, char* file, int line, int req){
 			for(j =swap_start/page_size;j< swap_size/page_size;j++){	//j is page in swap file to be put in pagetable so malloc can use
 				swap = fopen("swapFile.bin","rb+");
                         	if(swap == NULL){
-                                	printf("ERROR: could not open File line 653\n");
+                                	//printf("ERROR: could not open File line 653\n");
                                 	exit(EXIT_FAILURE);
                         	}
 				if(swapTable[j].alloc == 0){
@@ -733,7 +733,7 @@ void* myallocate(size_t x, char* file, int line, int req){
                                         swapTable[j].thread = table[pageToEvic].thread;
 					int err = fseek(swap,swap_start+(j*page_size),SEEK_SET);
 					if(err!=0){
-						printf("\nCould not seek to right page in swapfile\n");
+						//printf("\nCould not seek to right page in swapfile\n");
 					}
 					fwrite(os_start+(pageToEvic*page_size),page_size,1,swap);
 					if(pageToEvic >= mem_size/page_size){
@@ -743,7 +743,7 @@ void* myallocate(size_t x, char* file, int line, int req){
 					err = fseek(swap,0L,SEEK_SET);
 					
                                         if(err!=0){
-                                                printf("\nCould not seek to right page in swapfile\n");
+                                                //printf("\nCould not seek to right page in swapfile\n");
                                         }
 					fwrite(&swapTable,sizeof(swapTable),1,swap);
 					fclose(swap);
@@ -775,7 +775,7 @@ void* myallocate(size_t x, char* file, int line, int req){
 					}
 					fclose(swap);
 				}else{
-					printf("SHOULD NOT GET HERE OS SWAPFILE\n");	
+					//printf("SHOULD NOT GET HERE OS SWAPFILE\n");	
 					fclose(swap);
 				}	
 			}
@@ -829,7 +829,7 @@ void* myallocate(size_t x, char* file, int line, int req){
 
 			swap = fopen("swapFile.bin","rb+");
 	                if(swap == NULL){
-        	                printf("ERROR: could not open File line 755\n");
+        	                //printf("ERROR: could not open File line 755\n");
         	                exit(EXIT_FAILURE);
         	        }
 
@@ -850,7 +850,7 @@ void* myallocate(size_t x, char* file, int line, int req){
 					fseek(swap,swap_start+(j*page_size),SEEK_SET);
 					//ADD CHECK FOR END OF SWAP
 					fwrite(os_start+(pageToEvic*page_size),page_size,1,swap);
-					printf("page swap table\n");
+					//printf("page swap table\n");
 					mem = seg_alloc_first(x, req, pageToEvic, vaddr);
 					if(mem != NULL){
 						if(pageToEvic >= mem_size/page_size){
@@ -882,7 +882,7 @@ void* myallocate(size_t x, char* file, int line, int req){
 						break;
 					}
 				}else{
-					printf("SHOULD NOT GET HERE OS SWAPFILE\n");	
+					//printf("SHOULD NOT GET HERE OS SWAPFILE\n");	
 				}	
 			}
 			fclose(swap);
@@ -897,7 +897,7 @@ void* myallocate(size_t x, char* file, int line, int req){
 		}
 	}
 	else{
-		printf("ERROR: my_memory allocation request is neither from a thread nor from the scheduler.\n");
+		//printf("ERROR: my_memory allocation request is neither from a thread nor from the scheduler.\n");
 		exit(1);
 	}
 	
@@ -911,7 +911,7 @@ void* myallocate(size_t x, char* file, int line, int req){
 
 void* shared_seg_alloc_first(size_t x){
 	
-	printf("shared seg alloc first.\n");
+	//printf("shared seg alloc first.\n");
 	void* mem;
 	table_row* table = table_ptr;
 		
@@ -924,7 +924,7 @@ void* shared_seg_alloc_first(size_t x){
 	unsigned int total_pages = total_bytes / page_size;
 	if(total_bytes % page_size != 0){total_pages++; }
 	
-	printf("total bytes: %d total pages: %d\n", total_bytes, total_pages);
+	//printf("total bytes: %d total pages: %d\n", total_bytes, total_pages);
 	
 	int page = 2048-4;
 
@@ -933,7 +933,7 @@ void* shared_seg_alloc_first(size_t x){
 		
 		if(table[curr_page].alloc == 0){
 			
-			printf("claim page %d\n", curr_page); 
+			//printf("claim page %d\n", curr_page); 
 			table[curr_page].alloc = 1;
 			
 		}
@@ -962,7 +962,7 @@ void* shared_seg_alloc(size_t x){
 	//start at the page, get first metadata;
 	segdata meta;
 	memcpy(&meta, (my_memory+(page*page_size)), sizeof(meta));
-	printf("meta: %d size: %d alloc: %d\n", page*page_size, meta.size, meta.alloc);
+	//printf("meta: %d size: %d alloc: %d\n", page*page_size, meta.size, meta.alloc);
 	
 	unsigned int nextmetapos = page*page_size;   //this holds the position of the next metadata block in my_memory.
 	while(meta.alloc == 1 || x > meta.size){ //find first unallocated metadata.
@@ -977,13 +977,13 @@ void* shared_seg_alloc(size_t x){
 		}
 		
 		memcpy(&meta, (my_memory+nextmetapos), sizeof(meta));
-		printf("meta: %d size: %d alloc: %d\n", nextmetapos, meta.size, meta.alloc);
+		//printf("meta: %d size: %d alloc: %d\n", nextmetapos, meta.size, meta.alloc);
 		if(meta.alloc != 1 && meta.alloc != 0){
-			printf("what?\n");
+			//printf("what?\n");
 			exit(1);
 		}
 		if((int)meta.size < 0){
-			printf("what?\n");
+			//printf("what?\n");
 			exit(1);
 		}
 	}
@@ -1008,7 +1008,7 @@ void* shared_seg_alloc(size_t x){
 	}
 	memcpy((my_memory+nextmetapos), &meta, sizeof(meta)); //copy the metadata into my_memory 
 	if(nextmetapos < 0 || nextmetapos > (my_memory + mem_size)){
-		printf("what the hell?\n");
+		//printf("what the hell?\n");
 		exit(1);
 	}
 	mem = (my_memory +nextmetapos +sizeof(meta));		   //assign our pointer to the position after the metadat.
@@ -1024,7 +1024,7 @@ void* shared_seg_alloc(size_t x){
 
 		//before we copy over the nextmetadata, we need to make sure that its page is loaded in. 
 		if(nextmetapos+sizeof(meta) > next_page * page_size){
-			printf("next metadata broke page boundary: %d\n", nextmetapos+sizeof(meta) - (next_page * page_size));			
+			//printf("next metadata broke page boundary: %d\n", nextmetapos+sizeof(meta) - (next_page * page_size));			
 			if(table[next_page].alloc == 0){//this page was not allocated, lets claim it.
 				table[next_page].alloc = 1; 
 				page++; next_page++;
@@ -1032,7 +1032,7 @@ void* shared_seg_alloc(size_t x){
 				
 		}
 		memcpy((my_memory+nextmetapos), &nextmeta, sizeof(nextmeta));
-		printf("new metadata: alloc: %d size: %d\n", nextmeta.alloc, nextmeta.size);
+		//printf("new metadata: alloc: %d size: %d\n", nextmeta.alloc, nextmeta.size);
 		
 	
 	}
@@ -1092,7 +1092,7 @@ void shared_free(void* x){
 	int metapos_page = (int)((metapos - (void*)my_memory)/page_size);
 	int meta_vaddr = metapos_page - page + vaddr;
 	
-	printf("metapos: %d metapos_page: %d\n", metapos - (void*)my_memory, metapos_page);
+	//printf("metapos: %d metapos_page: %d\n", metapos - (void*)my_memory, metapos_page);
 
 	//set alloc = 0 and write to memory. 
 	segdata meta; 
@@ -1104,11 +1104,11 @@ void shared_free(void* x){
 	void* next_metapos = metapos + sizeof(meta) + meta.size;
 	int next_metapos_page = (int)((next_metapos - (void*)my_memory)/page_size);
 	
-	printf("next_metapos: %d next_metapos_page: %d\n", next_metapos - (void*)my_memory, next_metapos_page);
+	//printf("next_metapos: %d next_metapos_page: %d\n", next_metapos - (void*)my_memory, next_metapos_page);
 	
 	//double check to make sure metadata also doesn't end on a page we don't own.
 	int next_metapos_end_page = (int)((next_metapos + sizeof(meta) - (void*)my_memory)/page_size);
-	printf("next_metapos_end_page: %d\n",next_metapos_end_page);
+	//printf("next_metapos_end_page: %d\n",next_metapos_end_page);
 
 	//if next meta is 0, then combine.
 	segdata nextmeta;
@@ -1116,7 +1116,7 @@ void shared_free(void* x){
 	if(nextmeta.alloc == 0){
 		meta.size += nextmeta.size + sizeof(segdata);
 		memcpy(metapos, &meta, sizeof(segdata));
-		printf("combined meta and next.\n");
+		//printf("combined meta and next.\n");
 	}
 
 	//Find previous segment's metadata.
@@ -1127,14 +1127,14 @@ void shared_free(void* x){
 	while(prev_metapos != metapos){ //traverse from first page to find previous segment's metadata. 
 		
 		prev_metapos_page = (int)((prev_metapos - (void*)my_memory)/page_size);		
-		//printf("prev_metapos_page: %d prev_meta_vaddr: %d\n", prev_metapos_page, prev_meta_vaddr);
+		////printf("prev_metapos_page: %d prev_meta_vaddr: %d\n", prev_metapos_page, prev_meta_vaddr);
 
 		memcpy(&prev_meta, prev_metapos, sizeof(segdata));
-		printf("prev_meta: %d prev_meta.size: %d prev_meta.alloc: %d\n", (prev_metapos - (void*)my_memory)%page_size, prev_meta.size, prev_meta.alloc);
+		//printf("prev_meta: %d prev_meta.size: %d prev_meta.alloc: %d\n", (prev_metapos - (void*)my_memory)%page_size, prev_meta.size, prev_meta.alloc);
 		if(prev_metapos + sizeof(segdata) + prev_meta.size == metapos && prev_meta.alloc == 0){
 			prev_meta.size += meta.size + sizeof(segdata);
 			memcpy(prev_metapos, &prev_meta, sizeof(segdata));
-			printf("combined prev and meta.\n");
+			//printf("combined prev and meta.\n");
 			break;
 		}
 		else{
@@ -1142,7 +1142,7 @@ void shared_free(void* x){
 		}
 		prev_metapos += sizeof(segdata) + prev_meta.size;
 	}
-	printf("\n");
+	//printf("\n");
 	printpage(page, 0);
 }
 
@@ -1181,7 +1181,7 @@ void mydeallocate(void* x, char* file, int line, int req){
 	int metapos_page = (int)((metapos - (void*)my_memory)/page_size);
 	int meta_vaddr = metapos_page - page + vaddr;
 	
-	printf("metapos: %d metapos_page: %d meta_vaddr: %d\n", metapos - (void*)my_memory, metapos_page, meta_vaddr);
+	//printf("metapos: %d metapos_page: %d meta_vaddr: %d\n", metapos - (void*)my_memory, metapos_page, meta_vaddr);
 	if(table[metapos_page].thread != currently_running_thread){ //make sure page containing memory to free's metadata is ours. 
 		pageswap(metapos_page, req, meta_vaddr);
 	}
@@ -1197,7 +1197,7 @@ void mydeallocate(void* x, char* file, int line, int req){
 	int next_metapos_page = (int)((next_metapos - (void*)my_memory)/page_size);
 	int next_meta_vaddr = next_metapos_page - page + vaddr; 
 	
-	printf("next_metapos: %d next_metapos_page: %d next_meta_vaddr: %d\n", next_metapos - (void*)my_memory, next_metapos_page, next_meta_vaddr);
+	//printf("next_metapos: %d next_metapos_page: %d next_meta_vaddr: %d\n", next_metapos - (void*)my_memory, next_metapos_page, next_meta_vaddr);
 	if(table[next_metapos_page].thread != currently_running_thread){ //make sure page containing memory to free's metadata is ours. 
 		pageswap(next_metapos_page, req, next_meta_vaddr);
 	}
@@ -1205,7 +1205,7 @@ void mydeallocate(void* x, char* file, int line, int req){
 	//double check to make sure metadata also doesn't end on a page we don't own.
 	int next_metapos_end_page = (int)((next_metapos + sizeof(meta) - (void*)my_memory)/page_size);
 	int next_meta_vaddr_end = next_metapos_page - page + vaddr; 
-	printf("next_metapos_end_page: %d next_meta_vaddr_end: %d\n",next_metapos_end_page, next_meta_vaddr_end);
+	//printf("next_metapos_end_page: %d next_meta_vaddr_end: %d\n",next_metapos_end_page, next_meta_vaddr_end);
 	if(table[next_metapos_end_page].thread != currently_running_thread){ //make sure page containing memory to free's metadata is ours. 
 		pageswap(next_metapos_end_page, req, next_meta_vaddr);
 	}
@@ -1216,7 +1216,7 @@ void mydeallocate(void* x, char* file, int line, int req){
 	if(nextmeta.alloc == 0){
 		meta.size += nextmeta.size + sizeof(segdata);
 		memcpy(metapos, &meta, sizeof(segdata));
-		printf("combined meta and next.\n");
+		//printf("combined meta and next.\n");
 	}
 
 	//Find previous segment's metadata.
@@ -1237,18 +1237,18 @@ void mydeallocate(void* x, char* file, int line, int req){
 		prev_metapos_page = (int)((prev_metapos - (void*)my_memory)/page_size);
 		prev_meta_vaddr = prev_metapos_page - page + vaddr; 
 		
-		printf("prev_metapos_page: %d prev_meta_vaddr: %d\n", prev_metapos_page, prev_meta_vaddr);
+		//printf("prev_metapos_page: %d prev_meta_vaddr: %d\n", prev_metapos_page, prev_meta_vaddr);
 		
 		if(table[prev_metapos_page].thread != currently_running_thread){ //make sure page is ours. 
 			pageswap(prev_metapos_page, req, next_meta_vaddr);
 		}
 		
 		memcpy(&prev_meta, prev_metapos, sizeof(segdata));
-		printf("prev_meta: %d prev_meta.size: %d prev_meta.alloc: %d\n", (prev_metapos - (void*)my_memory)%page_size, prev_meta.size, prev_meta.alloc);
+		//printf("prev_meta: %d prev_meta.size: %d prev_meta.alloc: %d\n", (prev_metapos - (void*)my_memory)%page_size, prev_meta.size, prev_meta.alloc);
 		if(prev_metapos + sizeof(segdata) + prev_meta.size == metapos && prev_meta.alloc == 0){
 			prev_meta.size += meta.size + sizeof(segdata);
 			memcpy(prev_metapos, &prev_meta, sizeof(segdata));
-			printf("combined prev and meta.\n");
+			//printf("combined prev and meta.\n");
 			break;
 		}
 		else{
@@ -1256,7 +1256,7 @@ void mydeallocate(void* x, char* file, int line, int req){
 		}
 		prev_metapos += sizeof(segdata) + prev_meta.size;
 	}
-	printf("\n");
+	//printf("\n");
 	printpage(page, req);
 }
 
@@ -1264,32 +1264,32 @@ static void handler(int sig, siginfo_t *si, void *unused){
 	
 	
     long addr = (long)(si->si_addr - (void*)my_memory);
-	printf("addr: %x mem size: %x my_memory %x\n",addr, mem_size, my_memory);
+	//printf("addr: %x mem size: %x my_memory %x\n",addr, mem_size, my_memory);
 	int page = -1;
 	if(addr < mem_size){
 		page = (int) (addr / page_size); 
 		table_row* table = table_ptr;
 		pthread_t thread = table[page].thread;
-		printf("Got SIGSEGV at my_memory[%u] in page: %d owned by: %x\n",addr, page, thread);	
+		//printf("Got SIGSEGV at my_memory[%u] in page: %d owned by: %x\n",addr, page, thread);	
 
 		int req = -1;
 		if(currently_running_thread == NULL){req = 0;}
 		else{req = 1;}		
 		unsigned int vaddr = page-(user_start/page_size) + 1;
-		printf("req: %d vaddr: %u\n", req, vaddr);
+		//printf("req: %d vaddr: %u\n", req, vaddr);
 		if(req == THREADREQ){
-			printf("swapping for: %x\n", currently_running_thread);
+			//printf("swapping for: %x\n", currently_running_thread);
 		}
 		else{
-			printf("swapping for: 0\n");
+			//printf("swapping for: 0\n");
 		}
 		int swap_in = pageswap(page, req, vaddr);
-		printf("\n");
+		//printf("\n");
 		//printmem();
 		return;
 	}
 	else{
-		printf("Got SIGSEGV at %x out of bounds. would be page %d\n",si->si_addr, (int)(addr/page_size));
+		//printf("Got SIGSEGV at %x out of bounds. would be page %d\n",si->si_addr, (int)(addr/page_size));
 	    exit(1);
 	}
 }
