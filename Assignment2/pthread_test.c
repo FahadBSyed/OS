@@ -80,7 +80,18 @@ void* free_test(){
 
 
 }
+void* swapfile(){
+	printf("\nSwap test\n");
 
+	char* temp = malloc(mem_size-((4+10010)*page_size));
+//	char* temp2 = malloc((4*1024*1024)-(13*page_size));
+	char* temp3 = malloc(1024);
+
+	free(temp);
+//	free(temp2);
+	free(temp3);
+
+}
 
 
 int main(int argc, char** argv){
@@ -91,10 +102,10 @@ int main(int argc, char** argv){
 	pthread_t thread3;
 	pthread_t thread4;
 	pthread_t free1;	
-	int* x = malloc(sizeof(int));
-	printf("\x1b[36mX = %x\x1b[0m\n", x);
+	//int* x = malloc(sizeof(int));
+	//printf("\x1b[36mX = %x\x1b[0m\n", x);
 	//*x = 10;
-	void* try = malloc(4096 - sizeof(int) - 1 - 32);
+	//void* try = malloc(4096 - sizeof(int) - 1 - 32);
 //	int error = pthread_create(&thread, NULL, (void*)&test_func, x);
 	pthread_t self = (pthread_t)currently_running_thread;
 	printf("\x1b[36mcreated thread 1.\x1b[0m\n");
@@ -119,7 +130,7 @@ int main(int argc, char** argv){
 //	int error2 = pthread_create(&thread2, NULL, (void*)&test_func2, x);
 //	int error3 = pthread_create(&thread3, NULL, (void*)&test_func, x);
 //	int error4 = pthread_create(&thread4, NULL, (void*)&test_func, x);
-	int error5 = pthread_create(&free1, NULL, (void*)&free_test,NULL);
+	int error5 = pthread_create(&free1, NULL, (void*)&swapfile,NULL);
 //	if (error != 0 /*&& error2 != 0 && error3 != 0 && error4 != 0*/){
 //		printf("\x1b[36mcan't create thread :[%s]\x1b[0m", strerror(error));
 //		return;
