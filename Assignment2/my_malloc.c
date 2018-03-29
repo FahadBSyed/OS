@@ -274,6 +274,11 @@ void* seg_alloc_first(size_t x, int req, int page, int vaddr){
 	printf("total bytes: %d total pages: %d\n", total_bytes, total_pages);
 	
 	int curr_page = page;
+	
+	if(page+total_pages > 2043){
+		return NULL;
+	}
+	
 	while(curr_page < page+total_pages){
 		
 		
@@ -287,7 +292,7 @@ void* seg_alloc_first(size_t x, int req, int page, int vaddr){
 		}
 		if(table[curr_page].alloc == 0){
 			
-			printf("claim page %d\n", curr_page);
+			//printf("claim page %d\n", curr_page);
 			//change the table to reflect the currently running thread has claimed this page.
 			if(req == LIBRARYREQ){ 
 				table[curr_page].thread = (pthread_t)currently_running_thread; 
@@ -646,6 +651,10 @@ int pageswap(int swap_out, int req, int vaddr){
 //@TODO: change this to allocate into next page. If next page is not owned by us, swap it out.
 void* myallocate(size_t x, char* file, int line, int req){
 
+	if(x > 1000 * page_size){
+		return NULL;
+	}
+
 	//init metadata on first call.
 	if(user_first_free == 0){
 		initmem();
@@ -672,7 +681,7 @@ void* myallocate(size_t x, char* file, int line, int req){
 		int i = os_start/page_size;
 		int vaddr = 1;
 		pthread_t target = NULL;
-		while(mem == NULL && i < mem_size/page_size){
+		while(mem == NULL && i < mem_size/page_size - 4){
 			if(table[i].alloc == 0){ //if page is free or has never been claimed, then seg_alloc_first.
 				mem = seg_alloc_first(x, req, i, vaddr);
 				break;
@@ -820,9 +829,7 @@ void* myallocate(size_t x, char* file, int line, int req){
 
 
 
-			if(pageToEvic >= mem_size/page_size){
-				pageToEvic = 0;
-			}
+			
 			table_row swapTable[swap_size/page_size];
 			fread(&swapTable,sizeof(swapTable),1,swap);			//might have to fix, loop through page table
 			int j;
@@ -840,6 +847,9 @@ void* myallocate(size_t x, char* file, int line, int req){
 					printf("page swap table\n");
 					mem = seg_alloc_first(x, req, pageToEvic, vaddr);
 					if(mem != NULL){
+						if(pageToEvic >= mem_size/page_size){
+							pageToEvic = 0;
+						}
 						pageToEvic++;
 						break;
 					}
@@ -859,6 +869,9 @@ void* myallocate(size_t x, char* file, int line, int req){
 					if(mem==NULL){
 						vaddr++;
 					}else{
+						if(pageToEvic >= mem_size/page_size){
+							pageToEvic = 0;
+						}
 						pageToEvic++;
 						break;
 					}
