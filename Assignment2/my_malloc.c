@@ -15,7 +15,9 @@ void protectthreadpages(pthread_t thread, int debug){
 		
 		if((*(table + i)).thread == thread && (*(table + i)).alloc == 1){
 			mprotect( (my_memory+(i*page_size)), page_size, PROT_NONE);
-			if(debug){printf("page: %d address: %x - %x is protected.\n", i, (my_memory+(i*page_size)), (my_memory+((i+1)*page_size) - 1));}
+			if(debug){
+				printf("page: %d address: %x - %x is protected.\n", i, (my_memory+(i*page_size)), (my_memory+((i+1)*page_size) - 1));
+			}
 		}
 	}
 	if(debug) printf("\n");
@@ -29,7 +31,9 @@ void unprotectthreadpages(pthread_t thread, int debug){
 		
 		if(table[i].thread == thread && table[i].alloc == 1){
 			mprotect( (my_memory+(i*page_size)), page_size, PROT_READ | PROT_WRITE);
-			if(debug){printf("page: %d address: %x - %x is unprotected.\n", i, (my_memory+(i*page_size)), (my_memory+((i+1)*page_size) - 1));}
+			if(debug){
+				printf("page: %d address: %x - %x is unprotected.\n", i, (my_memory+(i*page_size)), (my_memory+((i+1)*page_size) - 1));
+			}
 		}
 	}
 	if(debug) printf("\n");
@@ -508,12 +512,12 @@ int pageswap(int swap_out, int req, int vaddr){
 	unprotectthreadpages(target, 0);
 	
 	user_first_free = user_start;
-	while(table[user_first_free/page_size].alloc != 0 && user_first_free<my_memory+mem_size){ 	//advance user_first_free to the user_first_free page. 
+	while(table[user_first_free/page_size].alloc != 0 && user_first_free/page_size < 2044){ 	//advance user_first_free to the user_first_free page. 
 		user_first_free += page_size;
 	}
 
 	int swapfile_out =-1;
-	if(user_first_free>=my_memory+mem_size){					//no free allocs so have to swap out a file.
+	if(user_first_free/page_size >= 2044){					//no free allocs so have to swap out a file.
 		swap = fopen("swapFile.bin","rb+");
 		printf("\n\nuser_first_free: %x my_memory+mem_size: %x PAGE SWAP IS WRITING TO SWAP FILE\n\n",user_first_free,my_memory+mem_size);
                 if(swap == NULL){
@@ -549,7 +553,7 @@ int pageswap(int swap_out, int req, int vaddr){
 	
 
 		printf("\tfirst free: %u page: %d\n", user_first_free, user_first_free/page_size);
-	
+		//printf("\tmy_memory + mem size - (page_size * 4): %u\n", ((unsigned int)(my_memory + mem_size)) - (4096*4));
 		memcpy(my_memory + user_first_free, my_memory + (swap_out*page_size), page_size);  //swap their page to a free page.
 		printf("\tmoved page %d to %d.\n\n", swap_out, user_first_free/page_size);
 	
@@ -833,7 +837,7 @@ void* myallocate(size_t x, char* file, int line, int req){
 					fseek(swap,swap_start+(j*page_size),SEEK_SET);
 					//ADD CHECK FOR END OF SWAP
 					fwrite(os_start+(pageToEvic*page_size),page_size,1,swap);
-				
+					printf("page swap table\n");
 					mem = seg_alloc_first(x, req, pageToEvic, vaddr);
 					if(mem != NULL){
 						pageToEvic++;
@@ -878,7 +882,7 @@ void* myallocate(size_t x, char* file, int line, int req){
 		exit(1);
 	}
 	
-	printmem();
+	//printmem();
 	return mem;
 }
 
@@ -906,7 +910,7 @@ void* shared_seg_alloc_first(size_t x){
 	int page = 2048-4;
 
 	int curr_page = page;
-	while(curr_page < page+total_pages-1){
+	while(curr_page < page+total_pages){
 		
 		if(table[curr_page].alloc == 0){
 			
@@ -1052,7 +1056,7 @@ void* shalloc(size_t x){
 		} 
 	}
 	
-	printmem();
+	//printmem();
 	return mem;
 }
 
@@ -1241,6 +1245,7 @@ static void handler(int sig, siginfo_t *si, void *unused){
 	
 	
     long addr = (long)(si->si_addr - (void*)my_memory);
+	printf("addr: %x mem size: %x my_memory %x\n",addr, mem_size, my_memory);
 	int page = -1;
 	if(addr < mem_size){
 		page = (int) (addr / page_size); 
@@ -1261,7 +1266,7 @@ static void handler(int sig, siginfo_t *si, void *unused){
 		}
 		int swap_in = pageswap(page, req, vaddr);
 		printf("\n");
-		printmem();
+		//printmem();
 		return;
 	}
 	else{
