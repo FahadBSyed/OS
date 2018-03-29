@@ -1245,7 +1245,7 @@ static void handler(int sig, siginfo_t *si, void *unused){
 	
     long addr = (long)(si->si_addr - (void*)my_memory);
 	int page = -1;
-	if(addr < mem_size && addr >= my_memory){
+	if(addr < mem_size){
 		page = (int) (addr / page_size); 
 		table_row* table = table_ptr;
 		pthread_t thread = table[page].thread;
