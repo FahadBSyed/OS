@@ -909,7 +909,7 @@ void* shared_seg_alloc_first(size_t x){
 	int page = 2048-4;
 
 	int curr_page = page;
-	while(curr_page < page+total_pages){
+	while(curr_page < page+total_pages-1){
 		
 		if(table[curr_page].alloc == 0){
 			
