@@ -374,11 +374,11 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 		memcpy(&meta, (my_memory+nextmetapos), sizeof(meta));
 		printf("meta: %d size: %d alloc: %d\n", nextmetapos, meta.size, meta.alloc);
 		if(meta.alloc != 1 && meta.alloc != 0){
-			printf("what?\n");
+			printf("what meta alloc == 1 and 2?\n");
 			exit(1);
 		}
 		if((int)meta.size < 0){
-			printf("what?\n");
+			printf("what meta size <0?\n");
 			exit(1);
 		}
 	}
@@ -489,10 +489,7 @@ void* seg_alloc(size_t x, int req, int page, int vaddr){
 
 //Performs a page swap. Returns 0 if there was no page to swap in (means its first alloc), 1 if another page was swapped in.
 int pageswap(int swap_out, int req, int vaddr){
-	char buff[page_size];
 	
-	printf("\n\n\n\n mem of buff start: %x end: %x mem of os start: %x end: %x \n\n\n\n",&buff,(&(buff))+page_size,my_memory+os_start,my_memory+user_start);
-
 	pthread_t target = NULL;
 	if(req == THREADREQ){
 		if(currently_running_thread == NULL){
@@ -574,7 +571,7 @@ int pageswap(int swap_out, int req, int vaddr){
 	
 	//we should be at our page in my_memory or we had no page.
 	if(swap_in == mem_size/page_size){ //we didn't have a previous first page or resides in swapfile.
-		printf("\n\nPAGE to swap in resides in SWAPFILE\n\n");
+		printf("\n\nPAGE to swap in resides in SWAPFILE or does not exist\n\n");
 		swap = fopen("swapFile.bin","rb+");
                 if(swap == NULL){
 			int errnum = errno;
@@ -624,7 +621,7 @@ int pageswap(int swap_out, int req, int vaddr){
 	}
 	else{ //we found the page.
 		
-		printf("\tswap_in: %d\n", swap_in);
+		printf("\tswap_in from page table: %d\n", swap_in);
 		memcpy(my_memory + (swap_out * page_size), my_memory + (swap_in * page_size), page_size); //memcpy that page over to the page that faulted. 
 		printf("\tpasting page %d over %d\n", swap_in, swap_out);
 		table[swap_out].thread = target;
