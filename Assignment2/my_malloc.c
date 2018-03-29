@@ -736,6 +736,9 @@ void* myallocate(size_t x, char* file, int line, int req){
 						printf("\nCould not seek to right page in swapfile\n");
 					}
 					fwrite(os_start+(pageToEvic*page_size),page_size,1,swap);
+					if(pageToEvic >= mem_size/page_size){
+                        		        pageToEvic = 0;
+                        		}
 					pageToEvic++;
 					err = fseek(swap,0L,SEEK_SET);
 					
@@ -764,6 +767,9 @@ void* myallocate(size_t x, char* file, int line, int req){
 					if(mem==NULL){
 						vaddr++;
 					}else{
+						if(pageToEvic >= mem_size/page_size){
+                                			pageToEvic = 0;
+                        			}
 						pageToEvic++;
 						break;
 					}
