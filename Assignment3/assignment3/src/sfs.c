@@ -30,6 +30,72 @@
 #include "log.h"
 
 
+//treat this as our header file for our flat file and stuff. 
+#ifndef SFS_HEADER
+#define SFS_HEADER 1
+#define USR_REGION 120
+
+ unsigned char blocks[32768]; //represents which blocks are claimed by which files
+							  //0 means free, 1 means kernel
+							  
+ struct stat filetable[128]; //represents possible flles							  
+							  
+ struct sfs_state *sfs_data;  //contains our diskfile and logfile references
+ 
+ int file_id = 2;
+ 
+ /*
+	-16 MB disk.
+	-128 file minimum. 
+	-block size is 512. 
+	-32,768 blocks. 
+	- ideally we only need 100 blocks to do our disk metadata
+	
+	-need flat file or disk which we need to access and view as a hard drive. 
+		
+		- files
+			- in units of blocks.
+			- free space is considered a file. 
+		
+		- directories
+			- represented as a file.
+			- reference parent. (..)
+			- reference to self. (.)
+			- reference to all contained files and directories. 
+			
+		- inode: 
+			- need a table of inodes
+			- # hardlinks
+			- group ID
+			- owner ID
+			- size
+			- # blocks
+			- array of block numbers in use. 
+			
+		- file descriptors: (current open files)
+			- read/write/append/read+write.
+			- owner ID
+			- group ID
+			- cursor position (same cursor for read and write?)
+			
+	- supposed to write in phase 1:
+		- init
+			- use testfsfile as the file representing our disk device 
+			
+		- getattr (done?)
+		- readdir 
+		
+		
+			
+	
+*/	
+	
+
+
+
+#endif
+
+
 ///////////////////////////////////////////////////////////
 //
 // Prototypes for all these functions, and the C-style comments,
@@ -48,13 +114,45 @@
  */
 void *sfs_init(struct fuse_conn_info *conn)
 {
-    fprintf(stderr, "in bb-init\n");
+    fprintf(stderr, "in sfs-init\n");
     log_msg("\nsfs_init()\n");
     
     log_conn(conn);
     log_fuse_context(fuse_get_context());
-
-    return SFS_DATA;
+	
+	int i = 0;
+	for(i; i < 32768; i++){					//initialize our block map.
+		if(i > USR_REGION) blocks[i] = 0;
+		else blocks[i] = 1;
+	}
+	
+	i = 0;
+	char* buf = calloc(sizeof(struct stat), sizeof(struct stat));
+	
+	for(i; i < 128; i++){									//initailize our inode map. 
+		memcpy(&filetable[i], buf, sizeof(struct stat));
+	}
+	free(buf);
+	
+	disk_open(sfs_data->diskfile); //open & create our disk block file. 
+	
+	i = 0;					//write to block map blocks.
+	buf = malloc(512);
+	for(i; i < 32768/512; i++){
+		memcpy(buf, &blocks[i*512], 512);
+		block_write(i, buf);
+	}
+	
+	i = 0;					//write to inode map blocks. 
+	for(i; i < sizeof(struct stat)/512; i++){
+		memcpy(buf, (void*)((&filetable) + (i*512)), 512);
+		block_write(i + 32768/512, buf);
+	}
+	free(buf);
+	
+	
+    
+	return SFS_DATA;
 }
 
 /**
@@ -76,13 +174,32 @@ void sfs_destroy(void *userdata)
  * mount option is given.
  */
 int sfs_getattr(const char *path, struct stat *statbuf)
-{
-    int retstat = 0;
+{	
     char fpath[PATH_MAX];
-    
+    int retstat = 0;
     log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
 	  path, statbuf);
     
+	printf( "GET ATTRIBUTE:\n" );
+	printf( "\t%s\n", path );
+	
+	statbuf->st_gid = getgid(); // same group as mounting user
+	statbuf->st_uid = getuid(); // same owner as mounting user
+	statbuf->st_mtime = time(NULL); // just modified 
+	statbuf->st_atime = time(NULL); // just accessed
+	
+	if ( strcmp(path, "/") == 0 )
+	{
+		statbuf->st_mode = 0755 | S_IFDIR;
+		statbuf->st_nlink = 2; // Reason for 2 hardlinks: http://unix.stackexchange.com/a/101536
+	}
+	else
+	{
+		statbuf->st_mode = 0644 | S_IFREG;
+		statbuf->st_size = 1024;
+		statbuf->st_nlink = 1;
+	}		
+	
     return retstat;
 }
 
@@ -104,7 +221,8 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     log_msg("\nsfs_create(path=\"%s\", mode=0%03o, fi=0x%08x)\n",
 	    path, mode, fi);
     
-    
+	
+	
     return retstat;
 }
 
@@ -133,9 +251,8 @@ int sfs_open(const char *path, struct fuse_file_info *fi)
     int retstat = 0;
     log_msg("\nsfs_open(path\"%s\", fi=0x%08x)\n",
 	    path, fi);
-
     
-    return retstat;
+    return retstat;	
 }
 
 /** Release an open file
@@ -237,9 +354,25 @@ int sfs_rmdir(const char *path)
 int sfs_opendir(const char *path, struct fuse_file_info *fi)
 {
     int retstat = 0;
-    log_msg("\nsfs_opendir(path=\"%s\", fi=0x%08x)\n",
-	  path, fi);
+    log_msg("\nsfs_opendir(path=\"%s\", fi=0x%08x)\n", path, fi);
     
+	DIR *dp;
+    char fpath[PATH_MAX];
+    strncat(fpath, path, 256);
+	//strcpy(fpath, BB_DATA->rootdir);
+	
+    // since opendir returns a pointer, takes some custom handling of
+    // return status.
+    dp = opendir(fpath);
+    log_msg("    opendir returned 0x%p\n", dp);
+    if (dp == NULL)
+	retstat = -1;
+    
+    fi->fh = (intptr_t) dp;
+    
+    log_fi(fi);
+    
+    return retstat;
     
     return retstat;
 }
@@ -268,8 +401,21 @@ int sfs_opendir(const char *path, struct fuse_file_info *fi)
 int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset,
 	       struct fuse_file_info *fi)
 {
-    int retstat = 0;
-    
+    int retstat = 0;	
+	//every directory needs .. (prev directory) and . (current directory)
+    filler( buf, ".", NULL, 0); // Current Directory
+	filler( buf, "..", NULL, 0); // Parent Directory
+	
+	
+	//read the root directory:
+	
+	//need to know:
+		//how are directories represented
+	
+	
+	if (strcmp(path, "/") == 0) // If the user is trying to show the files/directories of the root directory show the following
+	{
+	}
     
     return retstat;
 }
@@ -315,7 +461,6 @@ void sfs_usage()
 int main(int argc, char *argv[])
 {
     int fuse_stat;
-    struct sfs_state *sfs_data;
     
     // sanity checking on the command line
     if ((argc < 3) || (argv[argc-2][0] == '-') || (argv[argc-1][0] == '-'))
